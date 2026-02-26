@@ -1,13 +1,11 @@
-<!-- JavaScript.html - Shared client-side logic -->
+<!-- JavaScript.html - RamadanFlow v2.1 Client Logic -->
 <script>
     // ===================================================================
-    // SESSION & NAVIGATION
+    // APP STATE
     // ===================================================================
 
     var APP = {
-        username: '',
-        role: '',
-        email: '',
+        username: '', role: '', email: '',
         year: new Date().getFullYear(),
         calendarMonth: new Date().getMonth(),
         calendarYear: new Date().getFullYear(),
@@ -16,26 +14,30 @@
         dashboardData: null,
         taraweehData: {},
         fastingData: {},
-        khatams: []
+        khatams: [],
+        ramadanDates: null,  // {start: 'YYYY-MM-DD', end: 'YYYY-MM-DD'}
+        adminUsers: [],
+        undoTimer: null,
+        undoPending: null
     };
+
+    // ===================================================================
+    // SESSION & NAV
+    // ===================================================================
 
     function initApp() {
         APP.username = sessionStorage.getItem('username') || '';
         APP.role = sessionStorage.getItem('role') || 'user';
         APP.email = sessionStorage.getItem('email') || '';
 
-        if (!APP.username) {
-            goToPage('Login');
-            return;
-        }
+        if (!APP.username) { goToPage('Login'); return; }
 
         document.getElementById('displayName').textContent = APP.username;
         document.getElementById('displayRole').textContent = APP.role;
+        if (APP.role === 'admin') document.getElementById('adminTabBtn').style.display = '';
 
-        if (APP.role === 'admin') {
-            document.getElementById('adminTabBtn').style.display = '';
-        }
-
+        showSkeleton();
+        fetchRamadanDates();
         loadDashboard();
     }
 
@@ -45,29 +47,21 @@
         window.top.location.href = url + '?page=' + page;
     }
 
-    function logout() {
-        sessionStorage.clear();
-        goToPage('Login');
-    }
+    function logout() { sessionStorage.clear(); goToPage('Login'); }
 
     // ===================================================================
-    // TAB SWITCHING
+    // TABS
     // ===================================================================
 
     function switchTab(tabName) {
         var btns = document.querySelectorAll('.tab-btn');
         var contents = document.querySelectorAll('.tab-content');
-
         for (var i = 0; i < btns.length; i++) {
-            btns[i].classList.remove('active');
-            if (btns[i].getAttribute('data-tab') === tabName) btns[i].classList.add('active');
+            btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === tabName);
         }
         for (var j = 0; j < contents.length; j++) {
-            contents[j].classList.remove('active');
-            if (contents[j].id === 'tab-' + tabName) contents[j].classList.add('active');
+            contents[j].classList.toggle('active', contents[j].id === 'tab-' + tabName);
         }
-
-        // Lazy load tabs
         if (tabName === 'taraweeh') loadTaraweeh();
         if (tabName === 'quran') loadQuran();
         if (tabName === 'fasting') loadFasting();
@@ -76,7 +70,27 @@
     }
 
     // ===================================================================
-    // LOADING OVERLAY
+    // SKELETON LOADER
+    // ===================================================================
+
+    function showSkeleton() {
+        var main = document.getElementById('skeletonArea');
+        if (!main) return;
+        main.innerHTML =
+            '<div class="skeleton skeleton-card"></div>' +
+            '<div class="skeleton skeleton-bar"></div>' +
+            '<div class="skeleton skeleton-bar short"></div>' +
+            '<div class="skeleton skeleton-card"></div>';
+        main.style.display = 'block';
+    }
+
+    function hideSkeleton() {
+        var el = document.getElementById('skeletonArea');
+        if (el) el.style.display = 'none';
+    }
+
+    // ===================================================================
+    // LOADING & TOASTS
     // ===================================================================
 
     function showLoading(msg) {
@@ -84,10 +98,7 @@
         ol.querySelector('p').textContent = msg || 'Loading...';
         ol.classList.remove('hidden');
     }
-
-    function hideLoading() {
-        document.getElementById('loadingOverlay').classList.add('hidden');
-    }
+    function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 
     function showToast(msg, type) {
         var toast = document.createElement('div');
@@ -104,7 +115,35 @@
 
     function changeYear() {
         APP.year = parseInt(document.getElementById('yearSelect').value);
+        fetchRamadanDates();
         loadDashboard();
+    }
+
+    // ===================================================================
+    // RAMADAN DATE FETCHING
+    // ===================================================================
+
+    function fetchRamadanDates() {
+        google.script.run
+            .withSuccessHandler(function (result) {
+                if (result.success) {
+                    APP.ramadanDates = result.dates;
+                } else {
+                    APP.ramadanDates = null;
+                }
+            })
+            .getRamadanDates(APP.year);
+    }
+
+    function isRamadanDay(dateStr) {
+        if (!APP.ramadanDates) return false;
+        return dateStr >= APP.ramadanDates.start && dateStr <= APP.ramadanDates.end;
+    }
+
+    function getRamadanStartMonth() {
+        if (!APP.ramadanDates) return null;
+        var parts = APP.ramadanDates.start.split('-');
+        return { month: parseInt(parts[1]) - 1, year: parseInt(parts[0]) };
     }
 
     // ===================================================================
@@ -112,35 +151,34 @@
     // ===================================================================
 
     function loadDashboard() {
-        showLoading('Loading dashboard...');
         google.script.run
             .withSuccessHandler(function (result) {
+                hideSkeleton();
                 if (result.success) {
                     APP.dashboardData = result;
                     renderMyStats();
+                    // Auto-navigate to Ramadan month if no data yet
+                    var rm = getRamadanStartMonth();
+                    if (rm) {
+                        APP.calendarMonth = rm.month;
+                        APP.calendarYear = rm.year;
+                        APP.fastingCalMonth = rm.month;
+                        APP.fastingCalYear = rm.year;
+                    }
                     switchTab('taraweeh');
                 }
-                hideLoading();
             })
-            .withFailureHandler(function (err) {
-                hideLoading();
-                showToast('Failed to load dashboard.', 'error');
-            })
+            .withFailureHandler(function () { hideSkeleton(); showToast('Failed to load.', 'error'); })
             .getDashboardData(APP.year);
     }
 
     function renderMyStats() {
         var data = APP.dashboardData;
         if (!data) return;
-
         var me = null;
         for (var i = 0; i < data.summaries.length; i++) {
-            if (data.summaries[i].username.toLowerCase() === APP.username.toLowerCase()) {
-                me = data.summaries[i];
-                break;
-            }
+            if (data.summaries[i].username.toLowerCase() === APP.username.toLowerCase()) { me = data.summaries[i]; break; }
         }
-
         if (me) {
             document.getElementById('statTaraweeh').textContent = me.taraweehCount;
             document.getElementById('statStreak').textContent = me.streak;
@@ -150,155 +188,90 @@
         }
     }
 
+    function refreshDashboard() {
+        google.script.run.withSuccessHandler(function (r) { if (r.success) { APP.dashboardData = r; renderMyStats(); } }).getDashboardData(APP.year);
+    }
+
     // ===================================================================
     // TARAWEEH CALENDAR
     // ===================================================================
 
     function loadTaraweeh() {
-        google.script.run
-            .withSuccessHandler(function (result) {
-                if (result.success) {
-                    APP.taraweehData = result.data;
-                    renderTaraweehCalendar();
-                }
-            })
-            .getUserTaraweehData(APP.username, APP.year);
+        google.script.run.withSuccessHandler(function (r) { if (r.success) { APP.taraweehData = r.data; renderTaraweehCalendar(); } }).getUserTaraweehData(APP.username, APP.year);
     }
 
     function renderTaraweehCalendar() {
-        var month = APP.calendarMonth;
-        var year = APP.calendarYear;
+        var month = APP.calendarMonth, year = APP.calendarYear;
         var container = document.getElementById('taraweehCalendar');
         var title = document.getElementById('taraweehMonthTitle');
-
-        var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        title.textContent = monthNames[month] + ' ' + year;
+        var mn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        title.textContent = mn[month] + ' ' + year;
 
         var firstDay = new Date(year, month, 1).getDay();
-        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var dim = new Date(year, month + 1, 0).getDate();
         var today = new Date();
         var todayStr = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
 
         var html = '';
-        var dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        for (var h = 0; h < 7; h++) {
-            html += '<div class="calendar-day-header">' + dayHeaders[h] + '</div>';
-        }
+        var dh = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for (var h = 0; h < 7; h++) html += '<div class="calendar-day-header">' + dh[h] + '</div>';
+        for (var e = 0; e < firstDay; e++) html += '<div class="calendar-day empty"></div>';
 
-        for (var e = 0; e < firstDay; e++) {
-            html += '<div class="calendar-day empty"></div>';
-        }
-
-        for (var d = 1; d <= daysInMonth; d++) {
-            var dateStr = year + '-' + pad(month + 1) + '-' + pad(d);
-            var entry = APP.taraweehData[dateStr];
-            var isToday = dateStr === todayStr;
-            var isFuture = new Date(dateStr) > today;
+        for (var d = 1; d <= dim; d++) {
+            var ds = year + '-' + pad(month + 1) + '-' + pad(d);
+            var entry = APP.taraweehData[ds];
+            var isToday = ds === todayStr;
+            var isFuture = new Date(ds) > today;
             var classes = 'calendar-day';
-
             if (isToday) classes += ' today';
             if (isFuture) classes += ' future';
             if (entry && entry.completed) classes += ' completed';
+            if (isRamadanDay(ds)) classes += ' ramadan';
 
-            var rakaatBadge = '';
-            if (entry && entry.completed && entry.rakaat) {
-                rakaatBadge = '<span class="rakaat-badge">' + entry.rakaat + 'r</span>';
-            }
-
-            var onclick = isFuture ? '' : ' onclick="openTaraweehModal(\'' + dateStr + '\')"';
-
-            html += '<div class="' + classes + '"' + onclick + '>' + d + rakaatBadge + '</div>';
+            var rb = (entry && entry.completed && entry.rakaat) ? '<span class="rakaat-badge">' + entry.rakaat + 'r</span>' : '';
+            var oc = isFuture ? '' : ' onclick="openTaraweehModal(\'' + ds + '\')"';
+            html += '<div class="' + classes + '"' + oc + '>' + d + rb + '</div>';
         }
-
         container.innerHTML = html;
     }
 
-    function prevMonth() {
-        APP.calendarMonth--;
-        if (APP.calendarMonth < 0) { APP.calendarMonth = 11; APP.calendarYear--; }
-        renderTaraweehCalendar();
-    }
+    function prevMonth() { APP.calendarMonth--; if (APP.calendarMonth < 0) { APP.calendarMonth = 11; APP.calendarYear--; } renderTaraweehCalendar(); }
+    function nextMonth() { APP.calendarMonth++; if (APP.calendarMonth > 11) { APP.calendarMonth = 0; APP.calendarYear++; } renderTaraweehCalendar(); }
 
-    function nextMonth() {
-        APP.calendarMonth++;
-        if (APP.calendarMonth > 11) { APP.calendarMonth = 0; APP.calendarYear++; }
-        renderTaraweehCalendar();
-    }
-
-    // Taraweeh Modal
     function openTaraweehModal(dateStr) {
         var entry = APP.taraweehData[dateStr];
         var modal = document.getElementById('taraweehModal');
         modal.classList.remove('hidden');
         modal.setAttribute('data-date', dateStr);
         document.getElementById('taraweehModalDate').textContent = dateStr;
-
-        // Reset selection
         var opts = modal.querySelectorAll('.rakaat-option');
         for (var i = 0; i < opts.length; i++) opts[i].classList.remove('selected');
-
         if (entry && entry.completed) {
             document.getElementById('taraweehRemoveBtn').style.display = '';
-            var r = entry.rakaat || '8';
-            var sel = modal.querySelector('[data-rakaat="' + r + '"]');
+            var sel = modal.querySelector('[data-rakaat="' + (entry.rakaat || '8') + '"]');
             if (sel) sel.classList.add('selected');
         } else {
             document.getElementById('taraweehRemoveBtn').style.display = 'none';
             modal.querySelector('[data-rakaat="8"]').classList.add('selected');
         }
     }
-
-    function closeTaraweehModal() {
-        document.getElementById('taraweehModal').classList.add('hidden');
-    }
-
-    function selectRakaat(el) {
-        var opts = el.parentElement.querySelectorAll('.rakaat-option');
-        for (var i = 0; i < opts.length; i++) opts[i].classList.remove('selected');
-        el.classList.add('selected');
-    }
+    function closeTaraweehModal() { document.getElementById('taraweehModal').classList.add('hidden'); }
+    function selectRakaat(el) { var o = el.parentElement.querySelectorAll('.rakaat-option'); for (var i = 0; i < o.length; i++) o[i].classList.remove('selected'); el.classList.add('selected'); }
 
     function saveTaraweeh() {
         var modal = document.getElementById('taraweehModal');
-        var dateStr = modal.getAttribute('data-date');
+        var ds = modal.getAttribute('data-date');
         var sel = modal.querySelector('.rakaat-option.selected');
         var rakaat = sel ? parseInt(sel.getAttribute('data-rakaat')) : 8;
-
-        closeTaraweehModal();
-        showLoading('Saving...');
-
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) {
-                    showToast(result.message);
-                    loadTaraweeh();
-                    refreshDashboard();
-                } else {
-                    showToast(result.error, 'error');
-                }
-            })
-            .withFailureHandler(function () { hideLoading(); showToast('Error saving.', 'error'); })
-            .logTaraweeh(APP.username, dateStr, true, rakaat);
+        closeTaraweehModal(); showLoading('Saving...');
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { showToast(r.message); loadTaraweeh(); refreshDashboard(); } else showToast(r.error, 'error'); }).withFailureHandler(function () { hideLoading(); showToast('Error.', 'error'); }).logTaraweeh(APP.username, ds, true, rakaat);
     }
 
     function removeTaraweeh() {
         var modal = document.getElementById('taraweehModal');
-        var dateStr = modal.getAttribute('data-date');
-        closeTaraweehModal();
-        showLoading('Removing...');
-
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) {
-                    showToast(result.message);
-                    loadTaraweeh();
-                    refreshDashboard();
-                }
-            })
-            .withFailureHandler(function () { hideLoading(); })
-            .logTaraweeh(APP.username, dateStr, false, 0);
+        var ds = modal.getAttribute('data-date');
+        closeTaraweehModal(); showLoading('Removing...');
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { showToast(r.message); loadTaraweeh(); refreshDashboard(); } }).withFailureHandler(function () { hideLoading(); }).logTaraweeh(APP.username, ds, false, 0);
     }
 
     // ===================================================================
@@ -306,107 +279,90 @@
     // ===================================================================
 
     function loadQuran() {
-        showLoading('Loading Quran progress...');
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) {
-                    APP.khatams = result.khatams;
-                    renderKhatams();
-                }
-            })
-            .withFailureHandler(function () { hideLoading(); })
-            .getUserKhatams(APP.username, APP.year);
+        showLoading('Loading Quran...');
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { APP.khatams = r.khatams; renderKhatams(); } }).withFailureHandler(function () { hideLoading(); }).getUserKhatams(APP.username, APP.year);
     }
 
     function renderKhatams() {
         var container = document.getElementById('khatamList');
         if (APP.khatams.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)">' +
-                '<p style="font-size:40px;margin-bottom:12px">📖</p>' +
-                '<p>No Khatams started yet for ' + APP.year + '</p>' +
-                '<p style="font-size:13px;margin-top:8px">Click "Start New Khatam" to begin your journey</p></div>';
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)"><p style="font-size:40px;margin-bottom:12px">📖</p><p>No Khatams started yet for ' + APP.year + '</p><p style="font-size:13px;margin-top:8px">Click "Start New Khatam" above to begin</p></div>';
             return;
         }
-
         var html = '';
         for (var k = 0; k < APP.khatams.length; k++) {
             var kh = APP.khatams[k];
             var isComplete = kh.paraCount >= 30;
             var pct = Math.round((kh.paraCount / 30) * 100);
             var typeIcon = kh.type === 'Arabic' ? '🕋' : '🌍';
-            var statusClass = isComplete ? ' completed' : '';
-
-            html += '<div class="card' + statusClass + '">';
-            html += '<div class="card-header">';
-            html += '<h2>' + typeIcon + ' ' + kh.type + ' Khatam' + (isComplete ? ' ✅' : '') + '</h2>';
-            html += '<div style="display:flex;gap:8px;align-items:center">';
-            html += '<span style="font-size:13px;color:var(--text-secondary)">' + kh.paraCount + '/30</span>';
-            html += '<button class="btn btn-danger btn-sm" onclick="deleteKhatamConfirm(\'' + kh.khatamId + '\')">🗑️</button>';
-            html += '</div></div>';
-
+            html += '<div class="card">';
+            html += '<div class="card-header"><h2>' + typeIcon + ' ' + kh.type + ' Khatam' + (isComplete ? ' ✅' : '') + '</h2>';
+            html += '<div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px;color:var(--text-secondary)">' + kh.paraCount + '/30</span>';
+            html += '<button class="btn btn-danger btn-sm" onclick="deleteKhatamConfirm(\'' + kh.khatamId + '\')">🗑️</button></div></div>';
             html += '<div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>';
-
             html += '<div class="quran-grid">';
             for (var p = 1; p <= 30; p++) {
                 var done = kh.parasCompleted.indexOf(p) !== -1;
-                var cls = 'para-box' + (done ? ' completed' : '');
-                html += '<div class="' + cls + '" onclick="toggleParaClick(\'' + kh.khatamId + '\',' + p + ')">' + p + '</div>';
+                html += '<div class="para-box' + (done ? ' completed' : '') + '" onclick="toggleParaClick(\'' + kh.khatamId + '\',' + p + ',' + (done ? 'true' : 'false') + ')">' + p + '</div>';
             }
             html += '</div></div>';
         }
-
         container.innerHTML = html;
     }
 
     function startNewKhatam(type) {
-        showLoading('Starting new Khatam...');
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) {
-                    showToast(result.message);
-                    loadQuran();
-                    refreshDashboard();
-                } else {
-                    showToast(result.error, 'error');
-                }
-            })
-            .withFailureHandler(function () { hideLoading(); showToast('Error.', 'error'); })
-            .createKhatam(APP.username, type);
+        showLoading('Starting...');
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { showToast(r.message); loadQuran(); refreshDashboard(); } else showToast(r.error, 'error'); }).withFailureHandler(function () { hideLoading(); }).createKhatam(APP.username, type);
     }
 
-    function toggleParaClick(khatamId, para) {
+    function toggleParaClick(khatamId, para, wasCompleted) {
+        // If removing a completed para, show undo toast instead of instant delete
+        if (wasCompleted) {
+            showUndoToast('Para ' + para + ' unmarked.', function () {
+                // Undo = re-add it
+                showLoading('Restoring...');
+                google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { showToast('Para ' + para + ' restored!'); loadQuran(); refreshDashboard(); } }).togglePara(APP.username, khatamId, para);
+            });
+        }
+
         showLoading('Updating...');
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) {
-                    showToast(result.message);
-                    loadQuran();
-                    refreshDashboard();
-                } else {
-                    showToast(result.error, 'error');
-                }
-            })
-            .withFailureHandler(function () { hideLoading(); showToast('Error.', 'error'); })
-            .togglePara(APP.username, khatamId, para);
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { if (!wasCompleted) showToast(r.message); loadQuran(); refreshDashboard(); } else showToast(r.error, 'error'); }).withFailureHandler(function () { hideLoading(); }).togglePara(APP.username, khatamId, para);
     }
 
     function deleteKhatamConfirm(khatamId) {
-        if (!confirm('Delete this entire Khatam and all its progress? This cannot be undone.')) return;
+        if (!confirm('Delete this Khatam and all progress? Cannot be undone.')) return;
         showLoading('Deleting...');
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) {
-                    showToast(result.message);
-                    loadQuran();
-                    refreshDashboard();
-                }
-            })
-            .withFailureHandler(function () { hideLoading(); })
-            .deleteKhatam(APP.username, khatamId);
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { showToast(r.message); loadQuran(); refreshDashboard(); } }).withFailureHandler(function () { hideLoading(); }).deleteKhatam(APP.username, khatamId);
+    }
+
+    // ===================================================================
+    // UNDO TOAST
+    // ===================================================================
+
+    function showUndoToast(message, undoCallback) {
+        clearUndoToast();
+        var toast = document.createElement('div');
+        toast.className = 'undo-toast';
+        toast.id = 'undoToast';
+        toast.innerHTML = '<span>' + message + '</span><button class="undo-btn" id="undoBtn">UNDO</button>';
+        document.body.appendChild(toast);
+
+        APP.undoPending = undoCallback;
+        document.getElementById('undoBtn').onclick = function () {
+            clearUndoToast();
+            if (APP.undoPending) { APP.undoPending(); APP.undoPending = null; }
+        };
+
+        APP.undoTimer = setTimeout(function () {
+            clearUndoToast();
+            APP.undoPending = null;
+        }, 5000);
+    }
+
+    function clearUndoToast() {
+        if (APP.undoTimer) { clearTimeout(APP.undoTimer); APP.undoTimer = null; }
+        var el = document.getElementById('undoToast');
+        if (el) el.remove();
     }
 
     // ===================================================================
@@ -414,174 +370,103 @@
     // ===================================================================
 
     function loadFasting() {
-        google.script.run
-            .withSuccessHandler(function (result) {
-                if (result.success) {
-                    APP.fastingData = result.data;
-                    renderFastingCalendar();
-                }
-            })
-            .getUserFastingData(APP.username, APP.year);
+        google.script.run.withSuccessHandler(function (r) { if (r.success) { APP.fastingData = r.data; renderFastingCalendar(); } }).getUserFastingData(APP.username, APP.year);
     }
 
     function renderFastingCalendar() {
-        var month = APP.fastingCalMonth;
-        var year = APP.fastingCalYear;
+        var month = APP.fastingCalMonth, year = APP.fastingCalYear;
         var container = document.getElementById('fastingCalendar');
         var title = document.getElementById('fastingMonthTitle');
-
-        var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        title.textContent = monthNames[month] + ' ' + year;
+        var mn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        title.textContent = mn[month] + ' ' + year;
 
         var firstDay = new Date(year, month, 1).getDay();
-        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var dim = new Date(year, month + 1, 0).getDate();
         var today = new Date();
         var todayStr = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
 
         var html = '';
-        var dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        for (var h = 0; h < 7; h++) {
-            html += '<div class="calendar-day-header">' + dayHeaders[h] + '</div>';
-        }
+        var dh = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for (var h = 0; h < 7; h++) html += '<div class="calendar-day-header">' + dh[h] + '</div>';
+        for (var e = 0; e < firstDay; e++) html += '<div class="calendar-day empty"></div>';
 
-        for (var e = 0; e < firstDay; e++) {
-            html += '<div class="calendar-day empty"></div>';
-        }
-
-        for (var d = 1; d <= daysInMonth; d++) {
-            var dateStr = year + '-' + pad(month + 1) + '-' + pad(d);
-            var entry = APP.fastingData[dateStr];
-            var isToday = dateStr === todayStr;
-            var isFuture = new Date(dateStr) > today;
+        for (var d = 1; d <= dim; d++) {
+            var ds = year + '-' + pad(month + 1) + '-' + pad(d);
+            var entry = APP.fastingData[ds];
+            var isToday = ds === todayStr, isFuture = new Date(ds) > today;
             var classes = 'calendar-day';
-
             if (isToday) classes += ' today';
             if (isFuture) classes += ' future';
             if (entry && entry.fasted) classes += ' completed';
-
-            var onclick = isFuture ? '' : ' onclick="toggleFasting(\'' + dateStr + '\')"';
-            html += '<div class="' + classes + '"' + onclick + '>' + d + '</div>';
+            if (isRamadanDay(ds)) classes += ' ramadan';
+            var oc = isFuture ? '' : ' onclick="toggleFasting(\'' + ds + '\')"';
+            html += '<div class="' + classes + '"' + oc + '>' + d + '</div>';
         }
-
         container.innerHTML = html;
     }
 
-    function prevFastingMonth() {
-        APP.fastingCalMonth--;
-        if (APP.fastingCalMonth < 0) { APP.fastingCalMonth = 11; APP.fastingCalYear--; }
-        renderFastingCalendar();
-    }
-
-    function nextFastingMonth() {
-        APP.fastingCalMonth++;
-        if (APP.fastingCalMonth > 11) { APP.fastingCalMonth = 0; APP.fastingCalYear++; }
-        renderFastingCalendar();
-    }
+    function prevFastingMonth() { APP.fastingCalMonth--; if (APP.fastingCalMonth < 0) { APP.fastingCalMonth = 11; APP.fastingCalYear--; } renderFastingCalendar(); }
+    function nextFastingMonth() { APP.fastingCalMonth++; if (APP.fastingCalMonth > 11) { APP.fastingCalMonth = 0; APP.fastingCalYear++; } renderFastingCalendar(); }
 
     function toggleFasting(dateStr) {
-        var entry = APP.fastingData[dateStr];
-        var fasted = !(entry && entry.fasted);
-
+        var fasted = !(APP.fastingData[dateStr] && APP.fastingData[dateStr].fasted);
         showLoading('Saving...');
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) {
-                    showToast(result.message);
-                    loadFasting();
-                    refreshDashboard();
-                }
-            })
-            .withFailureHandler(function () { hideLoading(); })
-            .logFasting(APP.username, dateStr, fasted, '');
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { showToast(r.message); loadFasting(); refreshDashboard(); } }).withFailureHandler(function () { hideLoading(); }).logFasting(APP.username, dateStr, fasted, '');
     }
 
     // ===================================================================
     // STATISTICS & LEADERBOARD
     // ===================================================================
 
-    function loadStats() {
-        renderStats();
-    }
+    function loadStats() { renderStats(); }
 
     function renderStats() {
         var data = APP.dashboardData;
         if (!data) return;
-
-        // --- Charts ---
-        renderBarChart('taraweehChart', data.summaries, 'taraweehCount', 'Taraweeh Prayers', 'var(--green)');
-        renderBarChart('quranChart', data.summaries, 'totalParas', 'Total Paras Read', 'var(--gold)');
-        renderBarChart('fastingChart', data.summaries, 'fastingCount', 'Fasting Days', 'var(--blue)');
-
-        // --- Leaderboard ---
+        renderBarChart('taraweehChart', data.summaries, 'taraweehCount', '🕌 Taraweeh Prayers', 'var(--green)');
+        renderBarChart('quranChart', data.summaries, 'totalParas', '📖 Total Paras Read', 'var(--gold)');
+        renderBarChart('fastingChart', data.summaries, 'fastingCount', '🍽️ Fasting Days', 'var(--blue)');
         renderLeaderboard(data.summaries);
-
-        // --- Badges ---
         renderBadges(data.badges);
     }
 
-    function renderBarChart(containerId, summaries, field, title, color) {
-        var container = document.getElementById(containerId);
-        if (!container) return;
-
-        var max = 0;
-        for (var i = 0; i < summaries.length; i++) {
-            if (summaries[i][field] > max) max = summaries[i][field];
-        }
-        if (max === 0) max = 1;
-
+    function renderBarChart(id, summaries, field, title, color) {
+        var c = document.getElementById(id); if (!c) return;
+        var max = 1;
+        for (var i = 0; i < summaries.length; i++) if (summaries[i][field] > max) max = summaries[i][field];
         var html = '<h3 style="margin-bottom:12px;font-size:14px;color:var(--text-secondary)">' + title + '</h3>';
         for (var j = 0; j < summaries.length; j++) {
-            var s = summaries[j];
-            var pct = Math.round((s[field] / max) * 100);
+            var s = summaries[j], pct = Math.round((s[field] / max) * 100);
             var isMe = s.username.toLowerCase() === APP.username.toLowerCase();
-
             html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
             html += '<span style="min-width:80px;font-size:12px;text-align:right;color:' + (isMe ? 'var(--gold)' : 'var(--text-secondary)') + '">' + s.username + '</span>';
             html += '<div style="flex:1;background:var(--bg-secondary);border-radius:4px;height:24px;overflow:hidden">';
-            html += '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;transition:width 0.5s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;font-weight:600;color:var(--bg-primary)">' + (s[field] > 0 ? s[field] : '') + '</div>';
+            html += '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:4px;transition:width 0.5s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;font-weight:600;color:var(--bg-primary);min-width:' + (s[field] > 0 ? '20px' : '0') + '">' + (s[field] > 0 ? s[field] : '') + '</div>';
             html += '</div></div>';
         }
-        container.innerHTML = html;
+        c.innerHTML = html;
     }
 
     function renderLeaderboard(summaries) {
-        var container = document.getElementById('leaderboardTable');
-        if (!container) return;
-
-        var html = '<table class="family-table"><thead><tr>';
-        html += '<th>#</th><th>Name</th><th>🕌 Taraweeh</th><th>📖 Paras</th><th>🍽️ Fasts</th><th>📿 Khatams</th><th>⭐ Score</th>';
-        html += '</tr></thead><tbody>';
-
+        var c = document.getElementById('leaderboardTable'); if (!c) return;
+        var html = '<table class="family-table"><thead><tr><th>#</th><th>Name</th><th>🕌</th><th>📖</th><th>🍽️</th><th>📿</th>';
+        html += '<th><span class="score-tooltip">⭐ Score <span class="tooltip-text">Taraweeh + Paras + (Fasts × 0.5)</span></span></th></tr></thead><tbody>';
         for (var i = 0; i < summaries.length; i++) {
-            var s = summaries[i];
-            var isMe = s.username.toLowerCase() === APP.username.toLowerCase();
-            var rankEmoji = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i + 1)));
-
+            var s = summaries[i], isMe = s.username.toLowerCase() === APP.username.toLowerCase();
+            var rank = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i + 1)));
             html += '<tr style="' + (isMe ? 'background:rgba(201,168,76,0.05)' : '') + '">';
-            html += '<td class="rank">' + rankEmoji + '</td>';
+            html += '<td class="rank">' + rank + '</td>';
             html += '<td style="font-weight:' + (isMe ? '700' : '400') + ';color:' + (isMe ? 'var(--gold)' : 'var(--text-primary)') + '">' + s.username + '</td>';
-            html += '<td>' + s.taraweehCount + '</td>';
-            html += '<td>' + s.totalParas + '</td>';
-            html += '<td>' + s.fastingCount + '</td>';
-            html += '<td>' + s.completedKhatams + '</td>';
-            html += '<td style="font-weight:700;color:var(--gold)">' + s.score + '</td>';
-            html += '</tr>';
+            html += '<td>' + s.taraweehCount + '</td><td>' + s.totalParas + '</td><td>' + s.fastingCount + '</td><td>' + s.completedKhatams + '</td>';
+            html += '<td style="font-weight:700;color:var(--gold)">' + s.score + '</td></tr>';
         }
-
         html += '</tbody></table>';
-        container.innerHTML = html;
+        c.innerHTML = html;
     }
 
     function renderBadges(badges) {
-        var container = document.getElementById('badgesContainer');
-        if (!container) return;
-
-        if (!badges || badges.length === 0) {
-            container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px">No badges earned yet. Keep going! 💪</p>';
-            return;
-        }
-
+        var c = document.getElementById('badgesContainer'); if (!c) return;
+        if (!badges || badges.length === 0) { c.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px">No badges earned yet. Keep going! 💪</p>'; return; }
         var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">';
         for (var i = 0; i < badges.length; i++) {
             var b = badges[i];
@@ -596,82 +481,124 @@
             html += '</div></div>';
         }
         html += '</div>';
-        container.innerHTML = html;
+        c.innerHTML = html;
     }
 
     // ===================================================================
-    // ADMIN PANEL
+    // PROFILE
+    // ===================================================================
+
+    function openProfile() {
+        document.getElementById('profileModal').classList.remove('hidden');
+        document.getElementById('profileUsername').textContent = APP.username;
+        document.getElementById('profileEmail').textContent = APP.email;
+        document.getElementById('profileRole').textContent = APP.role;
+    }
+    function closeProfile() { document.getElementById('profileModal').classList.add('hidden'); }
+
+    function changePasswordSubmit() {
+        var oldPw = document.getElementById('oldPassword').value;
+        var newPw = document.getElementById('newPassword').value;
+        var cfPw = document.getElementById('confirmNewPassword').value;
+        if (!oldPw || !newPw) { showToast('Fill in all fields.', 'error'); return; }
+        if (newPw !== cfPw) { showToast('Passwords do not match.', 'error'); return; }
+        if (newPw.length < 4) { showToast('Min 4 characters.', 'error'); return; }
+
+        showLoading('Changing password...');
+        google.script.run.withSuccessHandler(function (r) {
+            hideLoading();
+            if (r.success) { showToast(r.message); closeProfile(); document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmNewPassword').value = ''; }
+            else showToast(r.error, 'error');
+        }).withFailureHandler(function () { hideLoading(); showToast('Error.', 'error'); }).changePassword(APP.username, oldPw, newPw);
+    }
+
+    // ===================================================================
+    // ADMIN
     // ===================================================================
 
     function loadAdmin() {
         if (APP.role !== 'admin') return;
         showLoading('Loading users...');
-        google.script.run
-            .withSuccessHandler(function (result) {
-                hideLoading();
-                if (result.success) renderAdminUsers(result.users);
-            })
-            .withFailureHandler(function () { hideLoading(); })
-            .adminGetAllUsers(APP.username);
+        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { APP.adminUsers = r.users; renderAdminUsers(r.users); } }).withFailureHandler(function () { hideLoading(); }).adminGetAllUsers(APP.username);
+    }
+
+    function filterAdminUsers() {
+        var q = document.getElementById('adminSearch').value.toLowerCase();
+        var filtered = APP.adminUsers.filter(function (u) {
+            return u.username.toLowerCase().indexOf(q) !== -1 || u.email.toLowerCase().indexOf(q) !== -1;
+        });
+        renderAdminUsers(filtered);
     }
 
     function renderAdminUsers(users) {
-        var container = document.getElementById('adminUserList');
+        var c = document.getElementById('adminUserList');
         var html = '';
-
         for (var i = 0; i < users.length; i++) {
-            var u = users[i];
-            var isMe = u.username.toLowerCase() === APP.username.toLowerCase();
-
-            html += '<div class="admin-user-row">';
-            html += '<div class="admin-user-info">';
+            var u = users[i], isMe = u.username.toLowerCase() === APP.username.toLowerCase();
+            html += '<div class="admin-user-row"><div class="admin-user-info">';
             html += '<span class="name">' + u.username + (u.role === 'admin' ? ' 👑' : '') + '</span>';
-            html += '<span class="email">' + u.email + ' · Joined ' + u.created + '</span>';
-            html += '</div>';
-            html += '<div class="admin-actions">';
-
+            html += '<span class="email">' + u.email + ' · Joined ' + u.created + '</span></div><div class="admin-actions">';
             if (!isMe) {
                 html += '<button class="btn btn-secondary btn-sm" onclick="adminResetPw(\'' + u.username + '\')">🔑 Reset PW</button>';
-                var toggleRole = u.role === 'admin' ? 'user' : 'admin';
-                var toggleLabel = u.role === 'admin' ? '⬇ Demote' : '⬆ Promote';
-                html += '<button class="btn btn-secondary btn-sm" onclick="adminToggleRole(\'' + u.username + '\',\'' + toggleRole + '\')">' + toggleLabel + '</button>';
+                var tr = u.role === 'admin' ? 'user' : 'admin', tl = u.role === 'admin' ? '⬇ Demote' : '⬆ Promote';
+                html += '<button class="btn btn-secondary btn-sm" onclick="adminToggleRole(\'' + u.username + '\',\'' + tr + '\')">' + tl + '</button>';
                 html += '<button class="btn btn-danger btn-sm" onclick="adminDeleteUsr(\'' + u.username + '\')">🗑</button>';
-            } else {
-                html += '<span style="font-size:12px;color:var(--text-muted)">You</span>';
-            }
-
+            } else { html += '<span style="font-size:12px;color:var(--text-muted)">You</span>'; }
             html += '</div></div>';
         }
-
-        container.innerHTML = html;
+        c.innerHTML = html;
     }
 
-    function adminResetPw(username) {
-        var pw = prompt('Enter new password for ' + username + ':');
-        if (!pw) return;
-        showLoading('Resetting...');
-        google.script.run
-            .withSuccessHandler(function (r) { hideLoading(); showToast(r.success ? r.message : r.error, r.success ? 'success' : 'error'); })
-            .withFailureHandler(function () { hideLoading(); })
-            .adminResetPassword(APP.username, username, pw);
+    function adminResetPw(u) { var pw = prompt('New password for ' + u + ':'); if (!pw) return; showLoading('Resetting...'); google.script.run.withSuccessHandler(function (r) { hideLoading(); showToast(r.success ? r.message : r.error, r.success ? 'success' : 'error'); }).adminResetPassword(APP.username, u, pw); }
+    function adminToggleRole(u, r) { if (!confirm('Change ' + u + ' to ' + r + '?')) return; showLoading('Updating...'); google.script.run.withSuccessHandler(function (res) { hideLoading(); showToast(res.success ? res.message : res.error, res.success ? 'success' : 'error'); loadAdmin(); }).adminChangeRole(APP.username, u, r); }
+    function adminDeleteUsr(u) { if (!confirm('DELETE "' + u + '"? Cannot undo!')) return; showLoading('Deleting...'); google.script.run.withSuccessHandler(function (r) { hideLoading(); showToast(r.success ? r.message : r.error, r.success ? 'success' : 'error'); loadAdmin(); }).adminDeleteUser(APP.username, u); }
+
+    // Admin edit user data
+    function openAdminEditUser() {
+        var sel = document.getElementById('adminEditUserSelect');
+        if (!sel.value) { showToast('Select a user first.', 'error'); return; }
+        var targetUser = sel.value;
+        // Load that user's taraweeh and show their calendar
+        showLoading('Loading ' + targetUser + '\'s data...');
+        google.script.run.withSuccessHandler(function (r) {
+            hideLoading();
+            if (r.success) {
+                APP.adminEditTaraweeh = r.data;
+                APP.adminEditTarget = targetUser;
+                showToast('Now viewing ' + targetUser + '\'s Taraweeh. Switch to Taraweeh tab to edit.', 'success');
+                // Temporarily override taraweeh data
+                APP.taraweehData = r.data;
+                APP.username_backup = APP.username;
+                APP.username = targetUser;
+                switchTab('taraweeh');
+            }
+        }).getUserTaraweehData(targetUser, APP.year);
     }
 
-    function adminToggleRole(username, newRole) {
-        if (!confirm('Change ' + username + ' to ' + newRole + '?')) return;
-        showLoading('Updating...');
-        google.script.run
-            .withSuccessHandler(function (r) { hideLoading(); showToast(r.success ? r.message : r.error, r.success ? 'success' : 'error'); loadAdmin(); })
-            .withFailureHandler(function () { hideLoading(); })
-            .adminChangeRole(APP.username, username, newRole);
+    function exitAdminEdit() {
+        if (APP.username_backup) {
+            APP.username = APP.username_backup;
+            APP.username_backup = null;
+            loadTaraweeh();
+            showToast('Back to your own data.', 'success');
+        }
     }
 
-    function adminDeleteUsr(username) {
-        if (!confirm('DELETE user "' + username + '"? This cannot be undone!')) return;
-        showLoading('Deleting...');
-        google.script.run
-            .withSuccessHandler(function (r) { hideLoading(); showToast(r.success ? r.message : r.error, r.success ? 'success' : 'error'); loadAdmin(); })
-            .withFailureHandler(function () { hideLoading(); })
-            .adminDeleteUser(APP.username, username);
+    // CSV Export
+    function exportCSV() {
+        showLoading('Exporting...');
+        google.script.run.withSuccessHandler(function (r) {
+            hideLoading();
+            if (r.success) {
+                var csv = '--- TARAWEEH ---\n' + r.data.taraweeh.join('\n') + '\n\n--- QURAN/KHATAMS ---\n' + r.data.quran.join('\n') + '\n\n--- FASTING ---\n' + r.data.fasting.join('\n');
+                var blob = new Blob([csv], { type: 'text/csv' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'RamadanFlow_' + APP.year + '.csv';
+                a.click();
+                showToast('CSV downloaded!');
+            } else showToast(r.error, 'error');
+        }).withFailureHandler(function () { hideLoading(); showToast('Export failed.', 'error'); }).exportAllData(APP.username, APP.year);
     }
 
     // ===================================================================
@@ -679,15 +606,4 @@
     // ===================================================================
 
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
-
-    function refreshDashboard() {
-        google.script.run
-            .withSuccessHandler(function (result) {
-                if (result.success) {
-                    APP.dashboardData = result;
-                    renderMyStats();
-                }
-            })
-            .getDashboardData(APP.year);
-    }
 </script>

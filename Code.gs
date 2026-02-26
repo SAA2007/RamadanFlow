@@ -1,7 +1,7 @@
 // ===================================================================
-// TARAWEEH & QURAN FAMILY TRACKER — Google Apps Script Backend
+// RAMADANFLOW — Family Ramadan Progress Tracker
 // ===================================================================
-// Version 2.0 — Multi-Khatam, Fasting, Badges
+// Version 2.1 — Multi-Khatam, Fasting, Badges, Ramadan Dates, CSV
 // Copy this entire file into the Apps Script editor as "Code.gs"
 // ===================================================================
 
@@ -15,6 +15,7 @@ const SHEET_TARAWEEH = 'TaraweehLog';
 const SHEET_QURAN    = 'QuranProgress';
 const SHEET_KHATAMS  = 'Khatams';
 const SHEET_FASTING  = 'FastingLog';
+const SHEET_SETTINGS = 'Settings';
 
 // ===================================================================
 // WEB APP ENTRY POINT
@@ -26,7 +27,7 @@ function doGet(e) {
   if (allowed.indexOf(page) === -1) page = 'Login';
   var template = HtmlService.createTemplateFromFile(page);
   return template.evaluate()
-    .setTitle('Taraweeh & Quran Tracker')
+    .setTitle('RamadanFlow')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
@@ -51,7 +52,8 @@ function getSheet_(name) {
       'TaraweehLog':   ['Username','Year','Date','Completed','Rakaat'],
       'Khatams':       ['KhatamId','Username','Year','Type','StartDate','CompletedDate','ParasDone'],
       'QuranProgress': ['KhatamId','ParaNumber','Date','Notes'],
-      'FastingLog':    ['Username','Year','Date','Fasted','Notes']
+      'FastingLog':    ['Username','Year','Date','Fasted','Notes'],
+      'Settings':      ['Key','Value']
     };
     if (headers[name]) {
       sheet.appendRow(headers[name]);
@@ -709,7 +711,7 @@ function adminDeleteUser(requestingUser, targetUsername) {
 function getAvailableYears() {
   var years = {};
   var sheets = [SHEET_TARAWEEH, SHEET_KHATAMS, SHEET_FASTING];
-  var yearCols = [1, 2, 1]; // column index (0-based) for Year in each sheet
+  var yearCols = [1, 2, 1];
 
   for (var s = 0; s < sheets.length; s++) {
     var data = getSheet_(sheets[s]).getDataRange().getValues();
@@ -720,4 +722,124 @@ function getAvailableYears() {
   }
   years[getCurrentYear_().toString()] = true;
   return Object.keys(years).sort().reverse();
+}
+
+// ===================================================================
+// CHANGE PASSWORD (Self)
+// ===================================================================
+
+function changePassword(username, oldPassword, newPassword) {
+  if (!username) return { success: false, error: 'Not logged in.' };
+  if (!oldPassword || !newPassword)
+    return { success: false, error: 'Both passwords are required.' };
+  if (newPassword.length < 4)
+    return { success: false, error: 'New password must be at least 4 characters.' };
+
+  var oldHash = hashPassword_(oldPassword);
+  var newHash = hashPassword_(newPassword);
+
+  return withLock_(function() {
+    var sheet = getSheet_(SHEET_USERS);
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0].toString().toLowerCase() === username.toLowerCase()) {
+        if (data[i][2].toString() !== oldHash) {
+          return { success: false, error: 'Current password is incorrect.' };
+        }
+        sheet.getRange(i + 1, 3).setValue(newHash);
+        return { success: true, message: 'Password changed successfully!' };
+      }
+    }
+    return { success: false, error: 'User not found.' };
+  });
+}
+
+// ===================================================================
+// RAMADAN DATES (Aladhan API + Cache)
+// ===================================================================
+
+function getRamadanDates(year) {
+  year = year || getCurrentYear_();
+  var key = 'ramadan_' + year;
+
+  // Check cache first
+  var sheet = getSheet_(SHEET_SETTINGS);
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString() === key) {
+      try {
+        return { success: true, dates: JSON.parse(data[i][1].toString()) };
+      } catch (e) { /* cache corrupted, re-fetch */ }
+    }
+  }
+
+  // Fetch from Aladhan API (Hijri month 9 = Ramadan)
+  try {
+    var url = 'https://api.aladhan.com/v1/hijriCalendar/9/' + year + '?method=2';
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var json = JSON.parse(response.getContentText());
+
+    if (json.code === 200 && json.data && json.data.length > 0) {
+      var firstDay = json.data[0].gregorian.date; // DD-MM-YYYY
+      var lastDay = json.data[json.data.length - 1].gregorian.date;
+
+      // Convert DD-MM-YYYY to YYYY-MM-DD
+      var startParts = firstDay.split('-');
+      var endParts = lastDay.split('-');
+      var startDate = startParts[2] + '-' + startParts[1] + '-' + startParts[0];
+      var endDate = endParts[2] + '-' + endParts[1] + '-' + endParts[0];
+
+      var result = { start: startDate, end: endDate };
+
+      // Cache it
+      withLock_(function() {
+        sheet.appendRow([key, JSON.stringify(result)]);
+        return { success: true };
+      });
+
+      return { success: true, dates: result };
+    }
+  } catch (e) {
+    // API failed — return empty gracefully
+  }
+
+  return { success: false, error: 'Could not fetch Ramadan dates for ' + year };
+}
+
+// ===================================================================
+// EXPORT ALL DATA (CSV format for admin)
+// ===================================================================
+
+function exportAllData(requestingUser, year) {
+  if (!isAdmin_(requestingUser))
+    return { success: false, error: 'Unauthorized.' };
+
+  year = year || getCurrentYear_();
+  var result = { taraweeh: [], quran: [], fasting: [] };
+
+  // Taraweeh
+  var tData = getSheet_(SHEET_TARAWEEH).getDataRange().getValues();
+  for (var t = 0; t < tData.length; t++) {
+    if (t === 0 || tData[t][1].toString() == year.toString()) {
+      result.taraweeh.push(tData[t].join(','));
+    }
+  }
+
+  // Khatams + QuranProgress
+  var kData = getSheet_(SHEET_KHATAMS).getDataRange().getValues();
+  for (var k = 0; k < kData.length; k++) {
+    if (k === 0 || kData[k][2].toString() == year.toString()) {
+      result.quran.push(kData[k].join(','));
+    }
+  }
+
+  // Fasting
+  var fData = getSheet_(SHEET_FASTING).getDataRange().getValues();
+  for (var f = 0; f < fData.length; f++) {
+    if (f === 0 || fData[f][1].toString() == year.toString()) {
+      result.fasting.push(fData[f].join(','));
+    }
+  }
+
+  return { success: true, data: result };
 }

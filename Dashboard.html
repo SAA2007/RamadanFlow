@@ -13,18 +13,18 @@
         <header class="header">
             <div class="header-left">
                 <span class="icon">🕌</span>
-                <h1>Taraweeh Tracker</h1>
+                <h1>RamadanFlow</h1>
             </div>
             <div class="header-right">
                 <select id="yearSelect" onchange="changeYear()">
                     <script>
                         var cy = new Date().getFullYear();
-                        for (var y = cy; y >= cy - 5; y--) {
-                            document.write('<option value="' + y + '">' + y + '</option>');
+                        for (var y = cy + 1; y >= cy - 5; y--) {
+                            document.write('<option value="' + y + '"' + (y === cy ? ' selected' : '') + '>' + y + '</option>');
                         }
                     </script>
                 </select>
-                <div class="user-badge">
+                <div class="user-badge" onclick="openProfile()">
                     <span>👤 <span id="displayName"></span></span>
                     <span class="role" id="displayRole"></span>
                 </div>
@@ -36,25 +36,35 @@
         <div class="main-content">
             <div class="stat-grid">
                 <div class="stat-card">
-                    <div class="stat-value" id="statTaraweeh">0</div>
+                    <div class="stat-value" id="statTaraweeh">-</div>
                     <div class="stat-label">🕌 Taraweeh</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="statStreak">0</div>
+                    <div class="stat-value" id="statStreak">-</div>
                     <div class="stat-label">🔥 Streak</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="statParas">0</div>
-                    <div class="stat-label">📖 Paras Read</div>
+                    <div class="stat-value" id="statParas">-</div>
+                    <div class="stat-label">📖 Paras</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="statKhatams">0</div>
+                    <div class="stat-value" id="statKhatams">-</div>
                     <div class="stat-label">✅ Khatams</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value" id="statFasting">0</div>
+                    <div class="stat-value" id="statFasting">-</div>
                     <div class="stat-label">🍽️ Fasts</div>
                 </div>
+            </div>
+
+            <!-- SKELETON LOADER AREA -->
+            <div id="skeletonArea" style="display:none"></div>
+
+            <!-- ADMIN EDIT BANNER (shown when admin is editing another user) -->
+            <div id="adminEditBanner"
+                style="display:none;background:rgba(201,168,76,0.15);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+                <span>👑 Editing as: <strong id="adminEditName"></strong></span>
+                <button class="btn btn-secondary btn-sm" onclick="exitAdminEdit()">← Back to My Data</button>
             </div>
 
             <!-- TABS -->
@@ -72,7 +82,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2>🕌 Taraweeh Calendar</h2>
-                        <p style="font-size:13px;color:var(--text-secondary)">Click a date to log your prayer</p>
+                        <p style="font-size:13px;color:var(--text-secondary)">Click a date to log prayer</p>
                     </div>
                     <div class="calendar">
                         <div class="calendar-nav">
@@ -91,14 +101,13 @@
                     <div class="card-header">
                         <h2>📖 Quran Progress</h2>
                         <div style="display:flex;gap:8px">
-                            <button class="btn btn-primary btn-sm" onclick="startNewKhatam('Arabic')">+ Arabic
-                                Khatam</button>
+                            <button class="btn btn-primary btn-sm" onclick="startNewKhatam('Arabic')">+ Arabic</button>
                             <button class="btn btn-secondary btn-sm" onclick="startNewKhatam('Translation')">+
                                 Translation</button>
                         </div>
                     </div>
                     <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
-                        Click a para number to mark it complete. Start unlimited khatams — Arabic or Translation.
+                        Click para numbers to toggle. Start unlimited khatams — Arabic or Translation.
                     </p>
                     <div id="khatamList"></div>
                 </div>
@@ -109,7 +118,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2>🍽️ Fasting Tracker</h2>
-                        <p style="font-size:13px;color:var(--text-secondary)">Click a date to toggle fasting</p>
+                        <p style="font-size:13px;color:var(--text-secondary)">Click a date to toggle</p>
                     </div>
                     <div class="calendar">
                         <div class="calendar-nav">
@@ -134,14 +143,12 @@
                         <div id="fastingChart"></div>
                     </div>
                 </div>
-
                 <div class="card">
                     <div class="card-header">
                         <h2>🏆 Family Leaderboard</h2>
                     </div>
                     <div id="leaderboardTable" style="overflow-x:auto"></div>
                 </div>
-
                 <div class="card">
                     <div class="card-header">
                         <h2>🎖️ Badges</h2>
@@ -156,10 +163,31 @@
                     <div class="card-header">
                         <h2>👑 User Management</h2>
                     </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
-                        Reset passwords, promote/demote users, or remove accounts.
-                    </p>
+                    <input type="text" class="admin-search" id="adminSearch" placeholder="🔍 Search by name or email..."
+                        oninput="filterAdminUsers()">
                     <div id="adminUserList"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>✏️ Edit User Data</h2>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Select a user to view and
+                        edit their Taraweeh calendar entries.</p>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <select id="adminEditUserSelect"
+                            style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
+                            <option value="">— Select user —</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="openAdminEditUser()">Edit</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📥 Export Data</h2>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Download all Taraweeh,
+                        Quran, and Fasting data as CSV for the selected year.</p>
+                    <button class="btn btn-secondary" onclick="exportCSV()">📥 Download CSV</button>
                 </div>
             </div>
 
@@ -169,9 +197,7 @@
         <div class="modal-overlay hidden" id="taraweehModal">
             <div class="modal">
                 <h3>🕌 Log Taraweeh — <span id="taraweehModalDate"></span></h3>
-                <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">How many rakaat did you pray?
-                </p>
-
+                <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">How many rakaat?</p>
                 <div class="rakaat-options">
                     <div class="rakaat-option selected" data-rakaat="8" onclick="selectRakaat(this)">
                         <div class="number">8</div>
@@ -182,12 +208,44 @@
                         <div class="label">Rakaat</div>
                     </div>
                 </div>
-
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="closeTaraweehModal()">Cancel</button>
                     <button class="btn btn-danger btn-sm" id="taraweehRemoveBtn" onclick="removeTaraweeh()"
                         style="display:none">Remove</button>
                     <button class="btn btn-primary" onclick="saveTaraweeh()">Save ✓</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFILE MODAL -->
+        <div class="modal-overlay hidden" id="profileModal">
+            <div class="modal">
+                <h3>👤 My Profile</h3>
+                <div class="profile-info">
+                    <span class="label">Username</span>
+                    <span class="value" id="profileUsername"></span>
+                    <span class="label">Email</span>
+                    <span class="value" id="profileEmail"></span>
+                    <span class="label">Role</span>
+                    <span class="value" id="profileRole"></span>
+                </div>
+                <hr style="border-color:var(--border-color);margin:16px 0">
+                <h3 style="font-size:15px">🔑 Change Password</h3>
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" id="oldPassword" placeholder="Enter current password">
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Min 4 characters">
+                </div>
+                <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="confirmNewPassword" placeholder="Re-enter new password">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeProfile()">Close</button>
+                    <button class="btn btn-primary" onclick="changePasswordSubmit()">Update Password</button>
                 </div>
             </div>
         </div>
@@ -201,7 +259,21 @@
     </div>
 
     <?!= include('JavaScript'); ?>
-    <script>initApp();</script>
+    <script>
+        // Populate admin user select when admin tab loads
+        var origLoadAdmin = loadAdmin;
+        loadAdmin = function () {
+            origLoadAdmin();
+            if (APP.role === 'admin' && APP.adminUsers.length > 0) {
+                var sel = document.getElementById('adminEditUserSelect');
+                sel.innerHTML = '<option value="">— Select user —</option>';
+                for (var i = 0; i < APP.adminUsers.length; i++) {
+                    sel.innerHTML += '<option value="' + APP.adminUsers[i].username + '">' + APP.adminUsers[i].username + '</option>';
+                }
+            }
+        };
+        initApp();
+    </script>
 </body>
 
 </html>
