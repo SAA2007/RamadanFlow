@@ -82,10 +82,10 @@ async function handleLogin(e) {
         APP.username = result.username;
         APP.role = result.role;
         APP.email = result.email;
-        sessionStorage.setItem('token', result.token);
-        sessionStorage.setItem('username', result.username);
-        sessionStorage.setItem('role', result.role);
-        sessionStorage.setItem('email', result.email);
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('username', result.username);
+        localStorage.setItem('role', result.role);
+        localStorage.setItem('email', result.email);
         initDashboard();
     } else {
         showLoginAlert(result.error, 'error');
@@ -140,10 +140,10 @@ function showRegisterAlert(msg, type) {
 // ===================================================================
 
 function initApp() {
-    APP.token = sessionStorage.getItem('token') || '';
-    APP.username = sessionStorage.getItem('username') || '';
-    APP.role = sessionStorage.getItem('role') || 'user';
-    APP.email = sessionStorage.getItem('email') || '';
+    APP.token = localStorage.getItem('token') || '';
+    APP.username = localStorage.getItem('username') || '';
+    APP.role = localStorage.getItem('role') || 'user';
+    APP.email = localStorage.getItem('email') || '';
 
     if (!APP.username || !APP.token) {
         goToPage('Login');
@@ -163,7 +163,7 @@ function initDashboard() {
 }
 
 function logout() {
-    sessionStorage.clear();
+    localStorage.clear();
     APP.username = '';
     APP.token = '';
     APP.dashboardData = null;
@@ -484,22 +484,35 @@ function loadStats() {
     renderBadges();
 }
 
+let taraweehChartInstance = null;
+let scoreChartInstance = null;
 function renderCharts() {
     var data = APP.dashboardData.summaries;
-    renderBarChart('taraweehChart', '🕌 Taraweeh Days', data.map(function (s) { return { label: s.username, value: s.taraweehCount }; }), 'var(--green)');
-    renderBarChart('quranChart', '📖 Quran Paras', data.map(function (s) { return { label: s.username, value: s.totalParas }; }), 'var(--gold)');
-    renderBarChart('fastingChart', '🍽️ Fasting Days', data.map(function (s) { return { label: s.username, value: s.fastingCount }; }), 'var(--blue)');
+    if (!data || data.length === 0) return;
+
+    var labels = data.map(function (s) { return s.username; });
+    var taraweehData = data.map(function (s) { return s.taraweehRakaat; });
+    var scoreData = data.map(function (s) { return s.score; });
+
+    if (taraweehChartInstance) taraweehChartInstance.destroy();
+    if (scoreChartInstance) scoreChartInstance.destroy();
+
+    var ctxT = document.getElementById('taraweehChart').getContext('2d');
+    taraweehChartInstance = new Chart(ctxT, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: 'Total Rakaat', data: taraweehData, backgroundColor: 'rgba(46, 204, 113, 0.6)', borderColor: '#2ecc71', borderWidth: 1 }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    var ctxS = document.getElementById('scoreChart').getContext('2d');
+    scoreChartInstance = new Chart(ctxS, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: 'Score', data: scoreData, backgroundColor: 'rgba(201, 168, 76, 0.6)', borderColor: '#c9a84c', borderWidth: 1 }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
 }
 
-function renderBarChart(containerId, title, items, color) {
-    var max = Math.max.apply(null, items.map(function (i) { return i.value; })) || 1;
-    var html = '<h3 style="font-size:15px;margin-bottom:12px">' + title + '</h3>';
-    items.forEach(function (item) {
-        var pct = Math.round((item.value / max) * 100);
-        html += '<div style="margin-bottom:8px;display:flex;align-items:center;gap:12px"><span style="min-width:80px;font-size:13px">' + item.label + '</span><div style="flex:1;height:20px;background:var(--bg-secondary);border-radius:10px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:10px;transition:width 0.5s"></div></div><span style="min-width:30px;font-size:13px;text-align:right">' + item.value + '</span></div>';
-    });
-    document.getElementById(containerId).innerHTML = html;
-}
+
 
 function renderLeaderboard() {
     var data = APP.dashboardData.summaries;
@@ -521,18 +534,25 @@ function renderBadges() {
         { emoji: '📖', name: 'Hafiz Journey', desc: '1 Khatam done', check: function (s) { return s.completedKhatams >= 1; } },
         { emoji: '🍽️', name: 'Fasting Warrior', desc: '15+ days fasted', check: function (s) { return s.fastingCount >= 15; } },
         { emoji: '🌙', name: 'Full Ramadan', desc: '29+ days fasted', check: function (s) { return s.fastingCount >= 29; } },
-        { emoji: '🚀', name: 'Getting Started', desc: 'Logged first Taraweeh', check: function (s) { return s.taraweehCount >= 1; } }
+        { emoji: '🚀', name: 'Getting Started', desc: 'Logged first Taraweeh', check: function (s) { return s.taraweehCount >= 1; } },
+        { emoji: '🤲', name: 'Dhikr Master', desc: '14+ posts of Azkar', check: function (s) { return s.azkarCount >= 14; } },
+        { emoji: '🕌', name: 'Mosque Pillar', desc: '25+ Daily prayers', check: function (s) { return s.namazCount >= 25; } },
+        { emoji: '🦅', name: 'Night Owl', desc: '100+ total Taraweeh rakaat', hidden: true, check: function (s) { return s.taraweehRakaat >= 100; } },
+        { emoji: '👑', name: 'Iron Man', desc: 'Score over 1000', hidden: true, check: function (s) { return s.score >= 1000; } }
     ];
 
     var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
     badgeDefs.forEach(function (def) {
         var earners = summaries.filter(function (s) { return def.check(s); }).map(function (s) { return s.username; });
         var earned = earners.length > 0;
+        if (def.hidden && !earned) return; // Hide hidden badges if nobody earned them yet
+
         html += '<div style="background:' + (earned ? 'rgba(201,168,76,0.1)' : 'var(--bg-secondary)') + ';border:1px solid ' + (earned ? 'var(--gold)' : 'var(--border-color)') + ';border-radius:var(--radius-sm);padding:16px;text-align:center;opacity:' + (earned ? '1' : '0.5') + '">';
         html += '<div style="font-size:32px;margin-bottom:8px">' + def.emoji + '</div>';
         html += '<div style="font-weight:600;font-size:14px">' + def.name + '</div>';
         html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' + def.desc + '</div>';
         if (earned) html += '<div style="font-size:11px;color:var(--gold)">' + earners.join(', ') + '</div>';
+        else html += '<div style="font-size:11px;color:var(--text-muted)">Unearned</div>';
         html += '</div>';
     });
     html += '</div>';
@@ -645,7 +665,7 @@ function openAdminEditUser() {
 }
 
 function exitAdminEdit() {
-    APP.username = sessionStorage.getItem('username');
+    APP.username = localStorage.getItem('username');
     document.getElementById('adminEditBanner').style.display = 'none';
     loadDashboard();
 }
@@ -674,9 +694,32 @@ async function exportCSV() {
 // AZKAR
 // ===================================================================
 
+let currentDhikr = null;
+async function fetchDailyDhikr() {
+    if (currentDhikr) {
+        document.getElementById('dailyDhikrText').textContent = '"' + currentDhikr.text + '"';
+        document.getElementById('dailyDhikrRef').textContent = '- ' + currentDhikr.ref;
+        return;
+    }
+    try {
+        var today = new Date();
+        var num = ((today.getDate() + 10) * (today.getMonth() + 4) * today.getFullYear()) % 6236 + 1; // Fake seeded random
+        var res = await fetch('https://api.alquran.cloud/v1/ayah/' + num + '/en.asad');
+        var data = await res.json();
+        if (data && data.data) {
+            currentDhikr = { text: data.data.text, ref: 'Quran ' + data.data.surah.number + ':' + data.data.numberInSurah + ' (' + data.data.surah.englishName + ')' };
+            document.getElementById('dailyDhikrText').textContent = '"' + currentDhikr.text + '"';
+            document.getElementById('dailyDhikrRef').textContent = '- ' + currentDhikr.ref;
+        }
+    } catch (e) {
+        document.getElementById('dailyDhikrText').textContent = "There is no deity but Allah, alone, without partner.";
+        document.getElementById('dailyDhikrRef').textContent = "- Sahih Bukhari";
+    }
+}
+
 async function loadAzkar() {
     var r = await api('/azkar/' + APP.username + '/' + APP.year);
-    if (r.success) { APP.azkarData = r.data; renderAzkarCalendar(); }
+    if (r.success) { APP.azkarData = r.data; renderAzkarCalendar(); fetchDailyDhikr(); }
 }
 
 function renderAzkarCalendar() {
@@ -773,14 +816,23 @@ async function loadSurah() {
     if (r.success) { APP.surahs = r.surahs; renderSurahList(); }
 }
 
-function renderSurahList() {
+function filterSurahs() {
+    var q = document.getElementById('surahSearch').value.toLowerCase();
+    var filtered = APP.surahs.filter(function (s) {
+        return s.surah_name.toLowerCase().indexOf(q) !== -1 || s.surah_number.toString().indexOf(q) !== -1;
+    });
+    renderSurahList(filtered);
+}
+
+function renderSurahList(list) {
     var container = document.getElementById('surahList');
-    if (APP.surahs.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)"><p style="font-size:40px;margin-bottom:12px">📝</p><p>No surahs being memorized yet</p><p style="font-size:13px;margin-top:8px">Click "+ Add Surah" to start</p></div>';
+    var dataList = list || APP.surahs;
+    if (dataList.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)"><p style="font-size:40px;margin-bottom:12px">📝</p><p>No surahs found or being memorized yet</p><p style="font-size:13px;margin-top:8px">Click "+ Add Surah" to start</p></div>';
         return;
     }
     var html = '';
-    APP.surahs.forEach(function (s) {
+    dataList.forEach(function (s) {
         var pct = Math.round((s.memorized_ayah / s.total_ayah) * 100);
         var isComplete = s.completed_at;
         html += '<div class="card" style="margin-bottom:12px"><div class="card-header"><h2 style="font-size:16px">' + s.surah_number + '. ' + s.surah_name + (isComplete ? ' ✅' : '') + '</h2><div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px;color:var(--text-secondary)">' + s.memorized_ayah + '/' + s.total_ayah + ' ayah · ' + pct + '%</span><button class="btn btn-danger btn-sm" onclick="deleteSurah(' + s.id + ')">🗑</button></div></div>';
@@ -838,47 +890,82 @@ async function loadNamaz() {
 
 function renderNamazGrid() {
     var month = APP.namazCalMonth, year = APP.namazCalYear;
-    var title = document.getElementById('namazMonthTitle');
     var container = document.getElementById('namazGrid');
+    var title = document.getElementById('namazMonthTitle');
     var mn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     title.textContent = mn[month] + ' ' + year;
 
+    var firstDay = new Date(year, month, 1).getDay();
     var dim = new Date(year, month + 1, 0).getDate();
     var today = new Date();
     var todayStr = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
 
-    var html = '<table class="family-table" style="font-size:13px"><thead><tr><th>Date</th>';
-    PRAYERS.forEach(function (p) { html += '<th style="text-align:center">' + PRAYER_TIMES[p] + '<br>' + PRAYER_LABELS[p] + '</th>'; });
-    html += '</tr></thead><tbody>';
+    var html = '<div class="calendar-grid">';
+    var dh = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (var h = 0; h < 7; h++) html += '<div class="calendar-day-header">' + dh[h] + '</div>';
+    for (var e = 0; e < firstDay; e++) html += '<div class="calendar-day empty"></div>';
 
-    for (var d = dim; d >= 1; d--) {
+    for (var d = 1; d <= dim; d++) {
         var ds = year + '-' + pad(month + 1) + '-' + pad(d);
         var dayData = APP.namazData[ds] || {};
         var isToday = ds === todayStr;
         var isFuture = new Date(ds) > today;
-        html += '<tr style="' + (isToday ? 'background:rgba(201,168,76,0.08)' : '') + '">';
-        html += '<td style="font-weight:' + (isToday ? '700' : '400') + ';color:' + (isToday ? 'var(--gold)' : 'var(--text-primary)') + '">' + d + (isToday ? ' ←' : '') + '</td>';
+        var classes = 'calendar-day';
+        if (isToday) classes += ' today';
+        if (isFuture) classes += ' future';
+        if (isRamadanDay(ds)) classes += ' ramadan';
 
-        PRAYERS.forEach(function (p) {
-            var loc = dayData[p] || '';
-            var icon = loc === 'mosque' ? '🕌' : loc === 'home' ? '🏠' : '·';
-            var bg = loc === 'mosque' ? 'rgba(46,204,113,0.15)' : loc === 'home' ? 'rgba(52,152,219,0.15)' : '';
-            var oc = isFuture ? '' : 'onclick="cycleNamaz(\'' + ds + '\',\'' + p + '\',\'' + loc + '\')"';
-            html += '<td style="text-align:center;cursor:' + (isFuture ? 'default' : 'pointer') + ';background:' + bg + ';font-size:18px;border-radius:4px" ' + oc + '>' + icon + '</td>';
-        });
-        html += '</tr>';
+        var loggedCount = 0;
+        PRAYERS.forEach(function (p) { if (dayData[p] && dayData[p] !== 'missed') loggedCount++; });
+        if (loggedCount === 5) classes += ' completed';
+
+        var badge = loggedCount > 0 ? ('<span class="rakaat-badge">' + loggedCount + '/5</span>') : '';
+        var oc = isFuture ? '' : ' onclick="openNamazModal(\'' + ds + '\')"';
+        html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span>' + badge + '</div>';
     }
-    html += '</tbody></table>';
+    html += '</div>';
     container.innerHTML = html;
 }
 
 function prevNamazMonth() { APP.namazCalMonth--; if (APP.namazCalMonth < 0) { APP.namazCalMonth = 11; APP.namazCalYear--; } loadNamaz(); }
 function nextNamazMonth() { APP.namazCalMonth++; if (APP.namazCalMonth > 11) { APP.namazCalMonth = 0; APP.namazCalYear++; } loadNamaz(); }
 
-async function cycleNamaz(dateStr, prayer, current) {
-    var next = current === '' ? 'mosque' : current === 'mosque' ? 'home' : 'missed';
-    var r = await api('/namaz/log', { method: 'POST', body: { date: dateStr, prayer: prayer, location: next } });
-    if (r.success) { showToast(r.message); loadNamaz(); }
+function openNamazModal(dateStr) {
+    document.getElementById('namazModal').classList.remove('hidden');
+    document.getElementById('namazModalDate').textContent = dateStr;
+    document.getElementById('namazModal').setAttribute('data-date', dateStr);
+
+    var dayData = APP.namazData[dateStr] || {};
+    var html = '';
+    PRAYERS.forEach(function (p) {
+        var loc = dayData[p] || 'missed';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg-secondary);border-radius:4px">';
+        html += '<span style="font-weight:600">' + PRAYER_TIMES[p] + ' ' + PRAYER_LABELS[p] + '</span>';
+        html += '<select id="namazLoc_' + p + '" style="background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);padding:6px;border-radius:4px;font-family:\'Inter\',sans-serif">';
+        html += '<option value="missed" ' + (loc === 'missed' ? 'selected' : '') + '>❌ Missed</option>';
+        html += '<option value="home" ' + (loc === 'home' ? 'selected' : '') + '>\uD83C\uDFE0 Home</option>';
+        html += '<option value="mosque" ' + (loc === 'mosque' ? 'selected' : '') + '>\uD83D\uDD4C Mosque</option>';
+        html += '</select></div>';
+    });
+    document.getElementById('namazModalGrid').innerHTML = html;
+}
+
+function closeNamazModal() { document.getElementById('namazModal').classList.add('hidden'); }
+
+async function saveNamazDay() {
+    var dateStr = document.getElementById('namazModal').getAttribute('data-date');
+    showLoading('Saving...');
+    var promises = [];
+    PRAYERS.forEach(function (p) {
+        var loc = document.getElementById('namazLoc_' + p).value;
+        promises.push(api('/namaz/log', { method: 'POST', body: { date: dateStr, prayer: p, location: loc } }));
+    });
+    await Promise.all(promises);
+    hideLoading();
+    closeNamazModal();
+    showToast('Namaz saved');
+    loadNamaz();
+    refreshDashboard();
 }
 
 // ===================================================================

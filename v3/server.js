@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -48,8 +50,18 @@ const PORT = process.env.PORT || 3000;
 // MIDDLEWARE
 // ===================================================================
 
+app.use(helmet({ contentSecurityPolicy: false })); // Security headers
 app.use(cors());
 app.use(express.json());
+
+// Rate limit for auth routes (5 attempts per minute per IP)
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { success: false, error: 'Too many attempts. Try again in a minute.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
 
 // Serve static frontend files from /public
 var publicDir = path.resolve(__dirname, 'public');
@@ -64,8 +76,8 @@ app.get('/', function (req, res) {
 // API ROUTES
 // ===================================================================
 
-// Auth — no middleware needed (login/register are public)
-app.use('/api/auth', require('./routes/auth'));
+// Auth — rate-limited, public (login/register)
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 
 // Protected routes — require JWT
 app.use('/api/taraweeh', authMiddleware, require('./routes/taraweeh'));

@@ -10,9 +10,10 @@ router.get('/:year', (req, res) => {
         const users = db.prepare('SELECT username, email, role, created_at FROM users').all();
 
         const summaries = users.map(u => {
-            // Taraweeh count & streak
+            // Taraweeh count, rakaat, & streak
             const taraweehRows = db.prepare('SELECT date, rakaat FROM taraweeh WHERE username = ? AND year = ? AND completed = ? ORDER BY date DESC').all(u.username, year, 'YES');
             const taraweehCount = taraweehRows.length;
+            const taraweehRakaat = taraweehRows.reduce((sum, r) => sum + (r.rakaat || 0), 0);
 
             // Calculate streak
             let streak = 0;
@@ -42,17 +43,30 @@ router.get('/:year', (req, res) => {
             // Azkar — count days with at least one (morning or evening)
             const azkarCount = db.prepare("SELECT COUNT(*) as c FROM azkar WHERE username = ? AND date LIKE ? AND (morning = 1 OR evening = 1)").get(u.username, year + '%').c;
 
-            // Namaz — count prayers at mosque or home
-            const namazCount = db.prepare("SELECT COUNT(*) as c FROM namaz WHERE username = ? AND date LIKE ?").get(u.username, year + '%').c;
+            // Namaz — count prayers by location
+            const namazRows = db.prepare("SELECT location FROM namaz WHERE username = ? AND date LIKE ? AND location != 'missed'").all(u.username, year + '%');
+            const namazMosque = namazRows.filter(r => r.location === 'mosque').length;
+            const namazHome = namazRows.filter(r => r.location === 'home').length;
+            const namazCount = namazRows.length;
 
-            // Score (v3.1 formula)
-            const score = (taraweehCount * 3) + (totalParas * 2) + (fastingCount * 2) + (streak) + (completedKhatams * 20) + (azkarCount) + (namazCount);
+            // Score (v3.2 formula - values rakaat > days)
+            const score = Math.floor(
+                (taraweehRakaat * 1.5) +
+                (totalParas * 5) +
+                (completedKhatams * 50) +
+                (fastingCount * 10) +
+                (azkarCount * 2) +
+                (namazMosque * 3) +
+                (namazHome * 1) +
+                (streak * 2)
+            );
 
             return {
                 username: u.username,
                 email: u.email,
                 role: u.role,
                 taraweehCount,
+                taraweehRakaat,
                 streak,
                 totalParas,
                 completedKhatams,

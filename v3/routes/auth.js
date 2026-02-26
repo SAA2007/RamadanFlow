@@ -68,12 +68,14 @@ router.post('/login', (req, res) => {
     }
 });
 
-// POST /api/auth/change-password
-router.post('/change-password', (req, res) => {
+// POST /api/auth/change-password (protected — requires JWT)
+const { authMiddleware } = require('../middleware/auth');
+router.post('/change-password', authMiddleware, (req, res) => {
     try {
-        const { username, oldPassword, newPassword } = req.body;
+        const { oldPassword, newPassword } = req.body;
+        const username = req.user.username;
 
-        if (!username || !oldPassword || !newPassword) {
+        if (!oldPassword || !newPassword) {
             return res.json({ success: false, error: 'All fields are required.' });
         }
         if (newPassword.length < 4) {

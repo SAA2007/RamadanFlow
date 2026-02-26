@@ -99,4 +99,17 @@ db.exec(`
   );
 `);
 
+// ===================================================================
+// INDEXES (idempotent — IF NOT EXISTS)
+// ===================================================================
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_taraweeh_user_year ON taraweeh(username, year);
+  CREATE INDEX IF NOT EXISTS idx_fasting_user_year ON fasting(username, year);
+  CREATE INDEX IF NOT EXISTS idx_khatams_user_year ON khatams(username, year);
+  CREATE INDEX IF NOT EXISTS idx_azkar_user_date ON azkar(username, date);
+  CREATE INDEX IF NOT EXISTS idx_namaz_user_date ON namaz(username, date);
+  CREATE INDEX IF NOT EXISTS idx_surah_user ON surah_memorization(username);
+`);
+
 module.exports = db;
