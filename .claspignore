@@ -1,0 +1,9 @@
+# Files to ignore when pushing to Apps Script
+README.md
+SETUP_GUIDE.md
+USER_GUIDE.md
+CLASP_SETUP.md
+.gitignore
+.git/**
+antigravity.log
+.clasp.json
