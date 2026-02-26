@@ -39,8 +39,14 @@ router.get('/:year', (req, res) => {
             // Fasting
             const fastingCount = db.prepare('SELECT COUNT(*) as c FROM fasting WHERE username = ? AND year = ? AND completed = ?').get(u.username, year, 'YES').c;
 
-            // Score (same formula as v2)
-            const score = (taraweehCount * 3) + (totalParas * 2) + (fastingCount * 2) + (streak) + (completedKhatams * 20);
+            // Azkar — count days with at least one (morning or evening)
+            const azkarCount = db.prepare("SELECT COUNT(*) as c FROM azkar WHERE username = ? AND date LIKE ? AND (morning = 1 OR evening = 1)").get(u.username, year + '%').c;
+
+            // Namaz — count prayers at mosque or home
+            const namazCount = db.prepare("SELECT COUNT(*) as c FROM namaz WHERE username = ? AND date LIKE ?").get(u.username, year + '%').c;
+
+            // Score (v3.1 formula)
+            const score = (taraweehCount * 3) + (totalParas * 2) + (fastingCount * 2) + (streak) + (completedKhatams * 20) + (azkarCount) + (namazCount);
 
             return {
                 username: u.username,
@@ -51,6 +57,8 @@ router.get('/:year', (req, res) => {
                 totalParas,
                 completedKhatams,
                 fastingCount,
+                azkarCount,
+                namazCount,
                 score
             };
         });

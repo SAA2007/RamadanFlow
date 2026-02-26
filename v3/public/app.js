@@ -283,6 +283,8 @@ function renderMyStats() {
         document.getElementById('statParas').textContent = me.totalParas;
         document.getElementById('statKhatams').textContent = me.completedKhatams;
         document.getElementById('statFasting').textContent = me.fastingCount;
+        document.getElementById('statAzkar').textContent = me.azkarCount;
+        document.getElementById('statNamaz').textContent = me.namazCount;
     }
 }
 
@@ -355,7 +357,7 @@ async function saveTaraweeh() {
     var ds = modal.getAttribute('data-date');
     var rakaat = Math.min(20, Math.max(1, parseInt(document.getElementById('rakaatInput').value) || 8));
     closeTaraweehModal(); showLoading('Saving...');
-    var r = await api('/taraweeh/log', { method: 'POST', body: { username: APP.username, date: ds, completed: true, rakaat: rakaat } });
+    var r = await api('/taraweeh/log', { method: 'POST', body: { date: ds, completed: true, rakaat: rakaat } });
     hideLoading();
     if (r.success) { showToast(r.message); loadTaraweeh(); refreshDashboard(); }
 }
@@ -364,7 +366,7 @@ async function removeTaraweeh() {
     var modal = document.getElementById('taraweehModal');
     var ds = modal.getAttribute('data-date');
     closeTaraweehModal(); showLoading('Removing...');
-    var r = await api('/taraweeh/log', { method: 'POST', body: { username: APP.username, date: ds, completed: false, rakaat: 0 } });
+    var r = await api('/taraweeh/log', { method: 'POST', body: { date: ds, completed: false, rakaat: 0 } });
     hideLoading();
     if (r.success) { showToast(r.message); loadTaraweeh(); refreshDashboard(); }
 }
@@ -406,14 +408,14 @@ function renderKhatams() {
 
 async function startNewKhatam(type) {
     showLoading('Starting...');
-    var r = await api('/quran/create', { method: 'POST', body: { username: APP.username, type: type } });
+    var r = await api('/quran/create', { method: 'POST', body: { type: type } });
     hideLoading();
     if (r.success) { showToast(r.message); loadQuran(); refreshDashboard(); }
     else showToast(r.error, 'error');
 }
 
 async function togglePara(khatamId, paraNumber, completed) {
-    var r = await api('/quran/toggle-para', { method: 'POST', body: { username: APP.username, khatamId: khatamId, paraNumber: paraNumber, completed: completed } });
+    var r = await api('/quran/toggle-para', { method: 'POST', body: { khatamId: khatamId, paraNumber: paraNumber, completed: completed } });
     if (r.success) { showToast(r.message); loadQuran(); refreshDashboard(); }
 }
 
@@ -466,7 +468,7 @@ function nextFastingMonth() { APP.fastingCalMonth++; if (APP.fastingCalMonth > 1
 async function toggleFasting(dateStr) {
     var current = APP.fastingData[dateStr] && APP.fastingData[dateStr].completed;
     showLoading('Saving...');
-    var r = await api('/fasting/log', { method: 'POST', body: { username: APP.username, date: dateStr, completed: !current } });
+    var r = await api('/fasting/log', { method: 'POST', body: { date: dateStr, completed: !current } });
     hideLoading();
     if (r.success) { showToast(r.message); loadFasting(); refreshDashboard(); }
 }
@@ -626,7 +628,7 @@ async function adminToggleRole(username, newRole) {
 async function adminDeleteUsr(username) {
     if (!confirm('Delete ' + username + '? This cannot be undone.')) return;
     showLoading('Deleting...');
-    var r = await api('/admin/delete-user', { method: 'POST', body: { targetUsername: username, requestingUser: APP.username } });
+    var r = await api('/admin/delete-user', { method: 'POST', body: { targetUsername: username } });
     hideLoading();
     if (r.success) { showToast(r.message); loadAdmin(); }
     else showToast(r.error, 'error');
@@ -726,7 +728,7 @@ async function openAzkarDay(dateStr) {
     if (entry.morning && !entry.evening) type = 'evening';
     else if (entry.morning && entry.evening) type = 'morning'; // will toggle off
 
-    var r = await api('/azkar/log', { method: 'POST', body: { username: APP.username, date: dateStr, type: type } });
+    var r = await api('/azkar/log', { method: 'POST', body: { date: dateStr, type: type } });
     if (r.success) { showToast(r.message); loadAzkar(); }
 }
 
@@ -803,7 +805,7 @@ function openSurahPicker() {
 
 async function addSurah(num, name, ayah) {
     showLoading('Adding...');
-    var r = await api('/surah/add', { method: 'POST', body: { username: APP.username, surahNumber: num, surahName: name, totalAyah: ayah } });
+    var r = await api('/surah/add', { method: 'POST', body: { surahNumber: num, surahName: name, totalAyah: ayah } });
     hideLoading();
     if (r.success) { showToast(r.message); loadSurah(); }
     else showToast(r.error, 'error');
@@ -875,7 +877,7 @@ function nextNamazMonth() { APP.namazCalMonth++; if (APP.namazCalMonth > 11) { A
 
 async function cycleNamaz(dateStr, prayer, current) {
     var next = current === '' ? 'mosque' : current === 'mosque' ? 'home' : 'missed';
-    var r = await api('/namaz/log', { method: 'POST', body: { username: APP.username, date: dateStr, prayer: prayer, location: next } });
+    var r = await api('/namaz/log', { method: 'POST', body: { date: dateStr, prayer: prayer, location: next } });
     if (r.success) { showToast(r.message); loadNamaz(); }
 }
 

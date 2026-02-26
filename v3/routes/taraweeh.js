@@ -6,8 +6,8 @@ const router = express.Router();
 // POST /api/taraweeh/log
 router.post('/log', (req, res) => {
     try {
-        const { username, date, completed, rakaat } = req.body;
-        if (!username) return res.json({ success: false, error: 'Not logged in.' });
+        const { date, completed, rakaat } = req.body;
+        const username = req.user.username;
 
         const dateStr = date || new Date().toISOString().slice(0, 10);
         const year = parseInt(dateStr.slice(0, 4));
@@ -35,7 +35,8 @@ router.post('/log', (req, res) => {
 // GET /api/taraweeh/:username/:year
 router.get('/:username/:year', (req, res) => {
     try {
-        const { username, year } = req.params;
+        const username = req.params.username;
+        const year = req.params.year;
         const rows = db.prepare('SELECT date, completed, rakaat FROM taraweeh WHERE username = ? AND year = ?').all(username, parseInt(year));
 
         const data = {};

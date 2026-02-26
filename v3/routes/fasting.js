@@ -6,8 +6,8 @@ const router = express.Router();
 // POST /api/fasting/log
 router.post('/log', (req, res) => {
     try {
-        const { username, date, completed } = req.body;
-        if (!username) return res.json({ success: false, error: 'Not logged in.' });
+        const { date, completed } = req.body;
+        const username = req.user.username;
 
         const dateStr = date || new Date().toISOString().slice(0, 10);
         const year = parseInt(dateStr.slice(0, 4));

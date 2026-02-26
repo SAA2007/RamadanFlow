@@ -51,8 +51,8 @@ router.post('/change-role', (req, res) => {
 // POST /api/admin/delete-user
 router.post('/delete-user', (req, res) => {
     try {
-        const { targetUsername, requestingUser } = req.body;
-        if (targetUsername.toLowerCase() === requestingUser.toLowerCase()) {
+        const { targetUsername } = req.body;
+        if (targetUsername.toLowerCase() === req.user.username.toLowerCase()) {
             return res.json({ success: false, error: 'Cannot delete yourself.' });
         }
         const result = db.prepare('DELETE FROM users WHERE username = ?').run(targetUsername);
@@ -60,6 +60,9 @@ router.post('/delete-user', (req, res) => {
         // Also clean up their data
         db.prepare('DELETE FROM taraweeh WHERE username = ?').run(targetUsername);
         db.prepare('DELETE FROM fasting WHERE username = ?').run(targetUsername);
+        db.prepare('DELETE FROM azkar WHERE username = ?').run(targetUsername);
+        db.prepare('DELETE FROM surah_memorization WHERE username = ?').run(targetUsername);
+        db.prepare('DELETE FROM namaz WHERE username = ?').run(targetUsername);
         const khatams = db.prepare('SELECT id FROM khatams WHERE username = ?').all(targetUsername);
         khatams.forEach(k => db.prepare('DELETE FROM quran_progress WHERE khatam_id = ?').run(k.id));
         db.prepare('DELETE FROM khatams WHERE username = ?').run(targetUsername);
@@ -77,8 +80,11 @@ router.get('/export/:year', (req, res) => {
         const taraweeh = db.prepare('SELECT username, year, date, completed, rakaat FROM taraweeh WHERE year = ?').all(year);
         const khatams = db.prepare('SELECT * FROM khatams WHERE year = ?').all(year);
         const fasting = db.prepare('SELECT username, year, date, completed FROM fasting WHERE year = ?').all(year);
+        const azkar = db.prepare("SELECT username, date, morning, evening FROM azkar WHERE date LIKE ?").all(year + '%');
+        const surah = db.prepare('SELECT username, surah_number, surah_name, total_ayah, memorized_ayah, completed_at FROM surah_memorization').all();
+        const namaz = db.prepare("SELECT username, date, prayer, location FROM namaz WHERE date LIKE ?").all(year + '%');
 
-        res.json({ success: true, data: { taraweeh, quran: khatams, fasting } });
+        res.json({ success: true, data: { taraweeh, quran: khatams, fasting, azkar, surah, namaz } });
     } catch (err) {
         console.error('Admin export error:', err);
         res.json({ success: false, error: 'Failed to export data.' });

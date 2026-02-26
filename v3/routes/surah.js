@@ -6,8 +6,9 @@ const router = express.Router();
 // POST /api/surah/add
 router.post('/add', (req, res) => {
     try {
-        const { username, surahNumber, surahName, totalAyah } = req.body;
-        if (!username || !surahNumber || !surahName || !totalAyah) {
+        const { surahNumber, surahName, totalAyah } = req.body;
+        const username = req.user.username;
+        if (!surahNumber || !surahName || !totalAyah) {
             return res.json({ success: false, error: 'Missing fields.' });
         }
         db.prepare('INSERT INTO surah_memorization (username, surah_number, surah_name, total_ayah) VALUES (?, ?, ?, ?)')
@@ -23,8 +24,8 @@ router.post('/add', (req, res) => {
 router.post('/update', (req, res) => {
     try {
         const { id, memorizedAyah } = req.body;
-        const surah = db.prepare('SELECT * FROM surah_memorization WHERE id = ?').get(id);
-        if (!surah) return res.json({ success: false, error: 'Surah not found.' });
+        const surah = db.prepare('SELECT * FROM surah_memorization WHERE id = ? AND username = ?').get(id, req.user.username);
+        if (!surah) return res.json({ success: false, error: 'Surah not found or not yours.' });
 
         const clamped = Math.min(Math.max(0, memorizedAyah), surah.total_ayah);
         const completedAt = clamped >= surah.total_ayah ? new Date().toISOString() : null;
@@ -43,7 +44,8 @@ router.post('/update', (req, res) => {
 router.post('/delete', (req, res) => {
     try {
         const { id } = req.body;
-        db.prepare('DELETE FROM surah_memorization WHERE id = ?').run(id);
+        const result = db.prepare('DELETE FROM surah_memorization WHERE id = ? AND username = ?').run(id, req.user.username);
+        if (result.changes === 0) return res.json({ success: false, error: 'Not found or not yours.' });
         res.json({ success: true, message: 'Surah removed.' });
     } catch (err) {
         console.error('Surah delete error:', err);

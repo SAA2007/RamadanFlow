@@ -11,8 +11,8 @@ function generateId() {
 // POST /api/quran/create
 router.post('/create', (req, res) => {
     try {
-        const { username, type } = req.body;
-        if (!username) return res.json({ success: false, error: 'Not logged in.' });
+        const { type } = req.body;
+        const username = req.user.username;
         if (type !== 'Arabic' && type !== 'Translation') {
             return res.json({ success: false, error: 'Type must be Arabic or Translation.' });
         }
@@ -59,8 +59,8 @@ router.get('/:username/:year', (req, res) => {
 // POST /api/quran/toggle-para
 router.post('/toggle-para', (req, res) => {
     try {
-        const { username, khatamId, paraNumber, completed } = req.body;
-        if (!username) return res.json({ success: false, error: 'Not logged in.' });
+        const { khatamId, paraNumber, completed } = req.body;
+        const username = req.user.username;
 
         // Verify ownership
         const khatam = db.prepare('SELECT * FROM khatams WHERE id = ? AND username = ?').get(khatamId, username);

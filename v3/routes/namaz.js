@@ -4,14 +4,18 @@ const db = require('../db/database');
 const router = express.Router();
 
 // POST /api/namaz/log
+const VALID_PRAYERS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+const VALID_LOCATIONS = ['mosque', 'home', 'missed'];
+
 router.post('/log', (req, res) => {
     try {
-        const { username, date, prayer, location } = req.body;
-        // prayer: fajr, dhuhr, asr, maghrib, isha
-        // location: mosque, home, missed
-        if (!username || !date || !prayer || !location) {
+        const { date, prayer, location } = req.body;
+        const username = req.user.username;
+        if (!date || !prayer || !location) {
             return res.json({ success: false, error: 'Missing fields.' });
         }
+        if (!VALID_PRAYERS.includes(prayer)) return res.json({ success: false, error: 'Invalid prayer.' });
+        if (!VALID_LOCATIONS.includes(location)) return res.json({ success: false, error: 'Invalid location.' });
 
         if (location === 'missed') {
             db.prepare('DELETE FROM namaz WHERE username = ? AND date = ? AND prayer = ?').run(username, date, prayer);
