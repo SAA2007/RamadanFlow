@@ -697,22 +697,31 @@ async function exportCSV() {
 let currentDhikr = null;
 async function fetchDailyDhikr() {
     if (currentDhikr) {
-        document.getElementById('dailyDhikrText').textContent = '"' + currentDhikr.text + '"';
+        document.getElementById('dailyDhikrText').innerHTML = currentDhikr.html;
         document.getElementById('dailyDhikrRef').textContent = '- ' + currentDhikr.ref;
         return;
     }
     try {
         var today = new Date();
         var num = ((today.getDate() + 10) * (today.getMonth() + 4) * today.getFullYear()) % 6236 + 1; // Fake seeded random
-        var res = await fetch('https://api.alquran.cloud/v1/ayah/' + num + '/en.asad');
+        var res = await fetch('https://api.alquran.cloud/v1/ayah/' + num + '/editions/quran-uthmani,en.asad,ur.jalandhry');
         var data = await res.json();
-        if (data && data.data) {
-            currentDhikr = { text: data.data.text, ref: 'Quran ' + data.data.surah.number + ':' + data.data.numberInSurah + ' (' + data.data.surah.englishName + ')' };
-            document.getElementById('dailyDhikrText').textContent = '"' + currentDhikr.text + '"';
+        if (data && data.data && data.data.length > 0) {
+            var ar = data.data.find(function (e) { return e.edition.language === 'ar'; });
+            var en = data.data.find(function (e) { return e.edition.language === 'en'; });
+            var ur = data.data.find(function (e) { return e.edition.language === 'ur'; });
+
+            var text = '';
+            if (ar) text += '<div style="font-size:20px;margin-bottom:8px;text-align:right;font-family:\'Traditional Arabic\',serif;color:var(--text-primary)" dir="rtl">' + ar.text + '</div>';
+            if (ur) text += '<div style="margin-bottom:8px;font-size:14px;color:var(--gold);text-align:right" dir="rtl">' + ur.text + '</div>';
+            if (en) text += '<div style="font-size:13px;font-style:italic;color:var(--text-secondary)">" ' + en.text + ' "</div>';
+
+            currentDhikr = { html: text, ref: 'Quran ' + ar.surah.number + ':' + ar.numberInSurah + ' (' + ar.surah.englishName + ')' };
+            document.getElementById('dailyDhikrText').innerHTML = currentDhikr.html;
             document.getElementById('dailyDhikrRef').textContent = '- ' + currentDhikr.ref;
         }
     } catch (e) {
-        document.getElementById('dailyDhikrText').textContent = "There is no deity but Allah, alone, without partner.";
+        document.getElementById('dailyDhikrText').innerHTML = '<p style="font-size: 14px; font-style: italic; color: var(--text-primary);">There is no deity but Allah, alone, without partner.</p>';
         document.getElementById('dailyDhikrRef').textContent = "- Sahih Bukhari";
     }
 }
@@ -813,7 +822,10 @@ var SURAH_LIST = [
 
 async function loadSurah() {
     var r = await api('/surah/' + APP.username);
-    if (r.success) { APP.surahs = r.surahs; renderSurahList(); }
+    if (r.success) {
+        APP.surahs = r.surahs.sort(function (a, b) { return a.surah_number - b.surah_number; });
+        renderSurahList();
+    }
 }
 
 function filterSurahs() {
@@ -851,6 +863,10 @@ function openSurahPicker() {
     if (!choice) return;
     var num = parseInt(choice);
     if (num < 1 || num > 114) { showToast('Invalid surah number (1-114).', 'error'); return; }
+
+    var existing = APP.surahs.find(function (s) { return s.surah_number === num; });
+    if (existing) { showToast('Surah is already in your list!', 'error'); return; }
+
     var surah = SURAH_LIST[num - 1];
     addSurah(surah.n, surah.name, surah.a);
 }
