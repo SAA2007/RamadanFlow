@@ -30,6 +30,9 @@
         APP.role = sessionStorage.getItem('role') || 'user';
         APP.email = sessionStorage.getItem('email') || '';
 
+        // Fetch the real deployment URL from server
+        google.script.run.withSuccessHandler(function (u) { APP.appUrl = u; }).getAppUrl();
+
         if (!APP.username) { goToPage('Login'); return; }
 
         document.getElementById('displayName').textContent = APP.username;
@@ -42,9 +45,13 @@
     }
 
     function goToPage(page) {
-        var url = window.location.href;
-        if (url.indexOf('?') !== -1) url = url.split('?')[0];
-        window.top.location.href = url + '?page=' + page;
+        if (APP.appUrl) {
+            window.top.location.href = APP.appUrl + '?page=' + page;
+        } else {
+            google.script.run.withSuccessHandler(function (u) {
+                window.top.location.href = u + '?page=' + page;
+            }).getAppUrl();
+        }
     }
 
     function logout() { sessionStorage.clear(); goToPage('Login'); }

@@ -42,6 +42,10 @@
     </div>
 
     <script>
+        var APP_URL = '';
+        // Fetch the real deployment URL from server (not the iframe sandbox URL)
+        google.script.run.withSuccessHandler(function (u) { APP_URL = u; }).getAppUrl();
+
         function showAlert(msg, type) {
             var el = document.getElementById('alert');
             el.textContent = msg;
@@ -65,7 +69,7 @@
                         sessionStorage.setItem('username', result.username);
                         sessionStorage.setItem('role', result.role);
                         sessionStorage.setItem('email', result.email);
-                        window.top.location.href = getUrl_('Dashboard');
+                        window.top.location.href = APP_URL + '?page=Dashboard';
                     } else {
                         showAlert(result.error, 'error');
                         btn.disabled = false;
@@ -81,16 +85,7 @@
         }
 
         function goToRegister() {
-            window.top.location.href = getUrl_('Register');
-        }
-
-        function getUrl_(page) {
-            var url = window.location.href;
-            // For Apps Script deployed URLs
-            if (url.indexOf('?') !== -1) {
-                url = url.split('?')[0];
-            }
-            return url + '?page=' + page;
+            window.top.location.href = APP_URL + '?page=Register';
         }
     </script>
 </body>

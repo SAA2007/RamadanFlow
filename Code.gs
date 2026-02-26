@@ -36,6 +36,10 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
+function getAppUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
 // ===================================================================
 // HELPERS
 // ===================================================================

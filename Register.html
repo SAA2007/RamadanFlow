@@ -51,6 +51,9 @@
     </div>
 
     <script>
+        var APP_URL = '';
+        google.script.run.withSuccessHandler(function (u) { APP_URL = u; }).getAppUrl();
+
         function showAlert(msg, type) {
             var el = document.getElementById('alert');
             el.textContent = msg;
@@ -91,9 +94,7 @@
         }
 
         function goToLogin() {
-            var url = window.location.href;
-            if (url.indexOf('?') !== -1) url = url.split('?')[0];
-            window.top.location.href = url + '?page=Login';
+            window.top.location.href = APP_URL + '?page=Login';
         }
     </script>
 </body>
