@@ -134,6 +134,14 @@
                     <div class="stat-value" id="statFasting">-</div>
                     <div class="stat-label">🍽️ Fasts</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statAzkar">-</div>
+                    <div class="stat-label">📿 Azkar</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statNamaz">-</div>
+                    <div class="stat-label">🕌 Namaz</div>
+                </div>
             </div>
 
             <!-- SKELETON -->
@@ -151,6 +159,9 @@
                 <button class="tab-btn active" data-tab="taraweeh" onclick="switchTab('taraweeh')">🕌 Taraweeh</button>
                 <button class="tab-btn" data-tab="quran" onclick="switchTab('quran')">📖 Quran</button>
                 <button class="tab-btn" data-tab="fasting" onclick="switchTab('fasting')">🍽️ Fasting</button>
+                <button class="tab-btn" data-tab="azkar" onclick="switchTab('azkar')">📿 Azkar</button>
+                <button class="tab-btn" data-tab="surah" onclick="switchTab('surah')">📝 Surah</button>
+                <button class="tab-btn" data-tab="namaz" onclick="switchTab('namaz')">🕌 Namaz</button>
                 <button class="tab-btn" data-tab="stats" onclick="switchTab('stats')">📊 Stats</button>
                 <button class="tab-btn" data-tab="admin" id="adminTabBtn" style="display:none"
                     onclick="switchTab('admin')">👑 Admin</button>
@@ -206,6 +217,57 @@
                             <button onclick="nextFastingMonth()">▶</button>
                         </div>
                         <div class="calendar-grid" id="fastingCalendar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: AZKAR -->
+            <div class="tab-content" id="tab-azkar">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📿 Daily Azkar</h2>
+                        <p style="font-size:13px;color:var(--text-secondary)">Tap to toggle morning / evening</p>
+                    </div>
+                    <div class="calendar">
+                        <div class="calendar-nav">
+                            <button onclick="prevAzkarMonth()">◀</button>
+                            <h3 id="azkarMonthTitle"></h3>
+                            <button onclick="nextAzkarMonth()">▶</button>
+                        </div>
+                        <div class="calendar-grid" id="azkarCalendar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: SURAH -->
+            <div class="tab-content" id="tab-surah">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📝 Surah Memorization</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openSurahPicker()">+ Add Surah</button>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+                        Track your surah memorization progress ayah by ayah.
+                    </p>
+                    <div id="surahList"></div>
+                </div>
+            </div>
+
+            <!-- TAB: NAMAZ -->
+            <div class="tab-content" id="tab-namaz">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🕌 Daily Namaz</h2>
+                        <p style="font-size:13px;color:var(--text-secondary)">Tap prayer → mosque 🕌 → home 🏠 → clear
+                        </p>
+                    </div>
+                    <div class="calendar">
+                        <div class="calendar-nav">
+                            <button onclick="prevNamazMonth()">◀</button>
+                            <h3 id="namazMonthTitle"></h3>
+                            <button onclick="nextNamazMonth()">▶</button>
+                        </div>
+                        <div id="namazGrid"></div>
                     </div>
                 </div>
             </div>
@@ -277,15 +339,16 @@
             <div class="modal">
                 <h3>🕌 Log Taraweeh — <span id="taraweehModalDate"></span></h3>
                 <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">How many rakaat?</p>
-                <div class="rakaat-options">
-                    <div class="rakaat-option selected" data-rakaat="8" onclick="selectRakaat(this)">
-                        <div class="number">8</div>
-                        <div class="label">Rakaat</div>
-                    </div>
-                    <div class="rakaat-option" data-rakaat="20" onclick="selectRakaat(this)">
-                        <div class="number">20</div>
-                        <div class="label">Rakaat</div>
-                    </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+                    <input type="number" id="rakaatInput" min="1" max="20" value="8"
+                        style="width:80px;padding:12px;font-size:20px;font-weight:700;text-align:center;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--gold);font-family:'Inter',sans-serif">
+                    <span style="color:var(--text-secondary);font-size:14px">rakaat (1–20)</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <button class="btn btn-secondary btn-sm"
+                        onclick="document.getElementById('rakaatInput').value=8">8</button>
+                    <button class="btn btn-secondary btn-sm"
+                        onclick="document.getElementById('rakaatInput').value=20">20</button>
                 </div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="closeTaraweehModal()">Cancel</button>

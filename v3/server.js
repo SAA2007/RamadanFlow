@@ -17,7 +17,13 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static frontend files from /public
-app.use(express.static(path.join(__dirname, 'public')));
+var publicDir = path.resolve(__dirname, 'public');
+app.use(express.static(publicDir));
+
+// Explicit root route
+app.get('/', function (req, res) {
+    res.sendFile(path.join(publicDir, 'index.html'));
+});
 
 // ===================================================================
 // API ROUTES
@@ -30,6 +36,9 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/taraweeh', authMiddleware, require('./routes/taraweeh'));
 app.use('/api/quran', authMiddleware, require('./routes/quran'));
 app.use('/api/fasting', authMiddleware, require('./routes/fasting'));
+app.use('/api/azkar', authMiddleware, require('./routes/azkar'));
+app.use('/api/surah', authMiddleware, require('./routes/surah'));
+app.use('/api/namaz', authMiddleware, require('./routes/namaz'));
 app.use('/api/dashboard', authMiddleware, require('./routes/dashboard'));
 app.use('/api/ramadan', authMiddleware, require('./routes/ramadan'));
 
@@ -48,11 +57,10 @@ app.get('*', function (req, res) {
 // START SERVER
 // ===================================================================
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
     console.log('');
-    console.log('  🕌 RamadanFlow v3.0 is running!');
+    console.log('  🕌 RamadanFlow v3.1 is running!');
     console.log('  ─────────────────────────────────');
-    console.log(`  Local:    http://localhost:${PORT}`);
-    console.log(`  Network:  http://<your-pi-ip>:${PORT}`);
+    console.log(`  URL:  http://localhost:${PORT}`);
     console.log('');
 });

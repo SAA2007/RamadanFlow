@@ -68,6 +68,35 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS azkar (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL COLLATE NOCASE,
+    date TEXT NOT NULL,
+    morning INTEGER DEFAULT 0,
+    evening INTEGER DEFAULT 0,
+    UNIQUE(username, date)
+  );
+
+  CREATE TABLE IF NOT EXISTS surah_memorization (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL COLLATE NOCASE,
+    surah_number INTEGER NOT NULL,
+    surah_name TEXT NOT NULL,
+    total_ayah INTEGER NOT NULL,
+    memorized_ayah INTEGER DEFAULT 0,
+    started_at TEXT DEFAULT (datetime('now')),
+    completed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS namaz (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL COLLATE NOCASE,
+    date TEXT NOT NULL,
+    prayer TEXT NOT NULL,
+    location TEXT NOT NULL DEFAULT 'missed',
+    UNIQUE(username, date, prayer)
+  );
 `);
 
 module.exports = db;

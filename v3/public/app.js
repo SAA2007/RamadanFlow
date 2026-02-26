@@ -1,5 +1,5 @@
 // ===================================================================
-// RamadanFlow v3.0 — Frontend Application
+// RamadanFlow v3.1 — Frontend Application
 // Replaces google.script.run with fetch() API calls
 // ===================================================================
 
@@ -13,8 +13,15 @@ var APP = {
     calendarYear: new Date().getFullYear(),
     fastingCalMonth: new Date().getMonth(),
     fastingCalYear: new Date().getFullYear(),
+    azkarCalMonth: new Date().getMonth(),
+    azkarCalYear: new Date().getFullYear(),
+    namazCalMonth: new Date().getMonth(),
+    namazCalYear: new Date().getFullYear(),
     taraweehData: {},
     fastingData: {},
+    azkarData: {},
+    namazData: {},
+    surahs: [],
     khatams: [],
     dashboardData: null,
     adminUsers: [],
@@ -179,6 +186,9 @@ function switchTab(tab) {
     if (tab === 'taraweeh') loadTaraweeh();
     else if (tab === 'quran') loadQuran();
     else if (tab === 'fasting') loadFasting();
+    else if (tab === 'azkar') loadAzkar();
+    else if (tab === 'surah') loadSurah();
+    else if (tab === 'namaz') loadNamaz();
     else if (tab === 'stats') loadStats();
     else if (tab === 'admin') loadAdmin();
 }
@@ -335,18 +345,15 @@ function openTaraweehModal(dateStr) {
     document.getElementById('taraweehModalDate').textContent = dateStr;
     var entry = APP.taraweehData[dateStr];
     document.getElementById('taraweehRemoveBtn').style.display = (entry && entry.completed) ? '' : 'none';
-    document.querySelectorAll('.rakaat-option').forEach(function (o) { o.classList.remove('selected'); });
-    var defaultR = (entry && entry.rakaat) ? entry.rakaat : '8';
-    document.querySelector('.rakaat-option[data-rakaat="' + defaultR + '"]').classList.add('selected');
+    document.getElementById('rakaatInput').value = (entry && entry.rakaat) ? entry.rakaat : 8;
 }
 
 function closeTaraweehModal() { document.getElementById('taraweehModal').classList.add('hidden'); }
-function selectRakaat(el) { document.querySelectorAll('.rakaat-option').forEach(function (o) { o.classList.remove('selected'); }); el.classList.add('selected'); }
 
 async function saveTaraweeh() {
     var modal = document.getElementById('taraweehModal');
     var ds = modal.getAttribute('data-date');
-    var rakaat = parseInt(document.querySelector('.rakaat-option.selected').getAttribute('data-rakaat'));
+    var rakaat = Math.min(20, Math.max(1, parseInt(document.getElementById('rakaatInput').value) || 8));
     closeTaraweehModal(); showLoading('Saving...');
     var r = await api('/taraweeh/log', { method: 'POST', body: { username: APP.username, date: ds, completed: true, rakaat: rakaat } });
     hideLoading();
@@ -659,6 +666,217 @@ async function exportCSV() {
     a.href = URL.createObjectURL(blob);
     a.download = 'RamadanFlow_' + APP.year + '.csv';
     a.click();
+}
+
+// ===================================================================
+// AZKAR
+// ===================================================================
+
+async function loadAzkar() {
+    var r = await api('/azkar/' + APP.username + '/' + APP.year);
+    if (r.success) { APP.azkarData = r.data; renderAzkarCalendar(); }
+}
+
+function renderAzkarCalendar() {
+    var month = APP.azkarCalMonth, year = APP.azkarCalYear;
+    var container = document.getElementById('azkarCalendar');
+    var title = document.getElementById('azkarMonthTitle');
+    var mn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    title.textContent = mn[month] + ' ' + year;
+
+    var firstDay = new Date(year, month, 1).getDay();
+    var dim = new Date(year, month + 1, 0).getDate();
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+
+    var html = '';
+    var dh = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (var h = 0; h < 7; h++) html += '<div class="calendar-day-header">' + dh[h] + '</div>';
+    for (var e = 0; e < firstDay; e++) html += '<div class="calendar-day empty"></div>';
+
+    for (var d = 1; d <= dim; d++) {
+        var ds = year + '-' + pad(month + 1) + '-' + pad(d);
+        var entry = APP.azkarData[ds] || {};
+        var isToday = ds === todayStr;
+        var isFuture = new Date(ds) > today;
+        var hasMorning = entry.morning;
+        var hasEvening = entry.evening;
+        var both = hasMorning && hasEvening;
+        var classes = 'calendar-day';
+        if (isToday) classes += ' today';
+        if (isFuture) classes += ' future';
+        if (both) classes += ' completed';
+
+        var icons = '';
+        if (hasMorning) icons += '☀️';
+        if (hasEvening) icons += '🌙';
+
+        var oc = isFuture ? '' : ' onclick="openAzkarDay(\'' + ds + '\')"';
+        html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><span class="rakaat-badge">' + icons + '</span></div>';
+    }
+    container.innerHTML = html;
+}
+
+function prevAzkarMonth() { APP.azkarCalMonth--; if (APP.azkarCalMonth < 0) { APP.azkarCalMonth = 11; APP.azkarCalYear--; } renderAzkarCalendar(); }
+function nextAzkarMonth() { APP.azkarCalMonth++; if (APP.azkarCalMonth > 11) { APP.azkarCalMonth = 0; APP.azkarCalYear++; } renderAzkarCalendar(); }
+
+async function openAzkarDay(dateStr) {
+    var type = 'morning';
+    var entry = APP.azkarData[dateStr] || {};
+    if (entry.morning && !entry.evening) type = 'evening';
+    else if (entry.morning && entry.evening) type = 'morning'; // will toggle off
+
+    var r = await api('/azkar/log', { method: 'POST', body: { username: APP.username, date: dateStr, type: type } });
+    if (r.success) { showToast(r.message); loadAzkar(); }
+}
+
+// ===================================================================
+// SURAH MEMORIZATION
+// ===================================================================
+
+var SURAH_LIST = [
+    { n: 1, name: "Al-Fatiha", a: 7 }, { n: 2, name: "Al-Baqarah", a: 286 }, { n: 3, name: "Ali 'Imran", a: 200 }, { n: 4, name: "An-Nisa", a: 176 },
+    { n: 5, name: "Al-Ma'idah", a: 120 }, { n: 6, name: "Al-An'am", a: 165 }, { n: 7, name: "Al-A'raf", a: 206 }, { n: 8, name: "Al-Anfal", a: 75 },
+    { n: 9, name: "At-Tawbah", a: 129 }, { n: 10, name: "Yunus", a: 109 }, { n: 11, name: "Hud", a: 123 }, { n: 12, name: "Yusuf", a: 111 },
+    { n: 13, name: "Ar-Ra'd", a: 43 }, { n: 14, name: "Ibrahim", a: 52 }, { n: 15, name: "Al-Hijr", a: 99 }, { n: 16, name: "An-Nahl", a: 128 },
+    { n: 17, name: "Al-Isra", a: 111 }, { n: 18, name: "Al-Kahf", a: 110 }, { n: 19, name: "Maryam", a: 98 }, { n: 20, name: "Taha", a: 135 },
+    { n: 21, name: "Al-Anbya", a: 112 }, { n: 22, name: "Al-Hajj", a: 78 }, { n: 23, name: "Al-Mu'minun", a: 118 }, { n: 24, name: "An-Nur", a: 64 },
+    { n: 25, name: "Al-Furqan", a: 77 }, { n: 26, name: "Ash-Shu'ara", a: 227 }, { n: 27, name: "An-Naml", a: 93 }, { n: 28, name: "Al-Qasas", a: 88 },
+    { n: 29, name: "Al-Ankabut", a: 69 }, { n: 30, name: "Ar-Rum", a: 60 }, { n: 31, name: "Luqman", a: 34 }, { n: 32, name: "As-Sajdah", a: 30 },
+    { n: 33, name: "Al-Ahzab", a: 73 }, { n: 34, name: "Saba", a: 54 }, { n: 35, name: "Fatir", a: 45 }, { n: 36, name: "Ya-Sin", a: 83 },
+    { n: 37, name: "As-Saffat", a: 182 }, { n: 38, name: "Sad", a: 88 }, { n: 39, name: "Az-Zumar", a: 75 }, { n: 40, name: "Ghafir", a: 85 },
+    { n: 41, name: "Fussilat", a: 54 }, { n: 42, name: "Ash-Shura", a: 53 }, { n: 43, name: "Az-Zukhruf", a: 89 }, { n: 44, name: "Ad-Dukhan", a: 59 },
+    { n: 45, name: "Al-Jathiyah", a: 37 }, { n: 46, name: "Al-Ahqaf", a: 35 }, { n: 47, name: "Muhammad", a: 38 }, { n: 48, name: "Al-Fath", a: 29 },
+    { n: 49, name: "Al-Hujurat", a: 18 }, { n: 50, name: "Qaf", a: 45 }, { n: 51, name: "Adh-Dhariyat", a: 60 }, { n: 52, name: "At-Tur", a: 49 },
+    { n: 53, name: "An-Najm", a: 62 }, { n: 54, name: "Al-Qamar", a: 55 }, { n: 55, name: "Ar-Rahman", a: 78 }, { n: 56, name: "Al-Waqi'ah", a: 96 },
+    { n: 57, name: "Al-Hadid", a: 29 }, { n: 58, name: "Al-Mujadila", a: 22 }, { n: 59, name: "Al-Hashr", a: 24 }, { n: 60, name: "Al-Mumtahanah", a: 13 },
+    { n: 61, name: "As-Saff", a: 14 }, { n: 62, name: "Al-Jumu'ah", a: 11 }, { n: 63, name: "Al-Munafiqun", a: 11 }, { n: 64, name: "At-Taghabun", a: 18 },
+    { n: 65, name: "At-Talaq", a: 12 }, { n: 66, name: "At-Tahrim", a: 12 }, { n: 67, name: "Al-Mulk", a: 30 }, { n: 68, name: "Al-Qalam", a: 52 },
+    { n: 69, name: "Al-Haqqah", a: 52 }, { n: 70, name: "Al-Ma'arij", a: 44 }, { n: 71, name: "Nuh", a: 28 }, { n: 72, name: "Al-Jinn", a: 28 },
+    { n: 73, name: "Al-Muzzammil", a: 20 }, { n: 74, name: "Al-Muddaththir", a: 56 }, { n: 75, name: "Al-Qiyamah", a: 40 }, { n: 76, name: "Al-Insan", a: 31 },
+    { n: 77, name: "Al-Mursalat", a: 50 }, { n: 78, name: "An-Naba", a: 40 }, { n: 79, name: "An-Nazi'at", a: 46 }, { n: 80, name: "Abasa", a: 42 },
+    { n: 81, name: "At-Takwir", a: 29 }, { n: 82, name: "Al-Infitar", a: 19 }, { n: 83, name: "Al-Mutaffifin", a: 36 }, { n: 84, name: "Al-Inshiqaq", a: 25 },
+    { n: 85, name: "Al-Buruj", a: 22 }, { n: 86, name: "At-Tariq", a: 17 }, { n: 87, name: "Al-A'la", a: 19 }, { n: 88, name: "Al-Ghashiyah", a: 26 },
+    { n: 89, name: "Al-Fajr", a: 30 }, { n: 90, name: "Al-Balad", a: 20 }, { n: 91, name: "Ash-Shams", a: 15 }, { n: 92, name: "Al-Layl", a: 21 },
+    { n: 93, name: "Ad-Duha", a: 11 }, { n: 94, name: "Ash-Sharh", a: 8 }, { n: 95, name: "At-Tin", a: 8 }, { n: 96, name: "Al-Alaq", a: 19 },
+    { n: 97, name: "Al-Qadr", a: 5 }, { n: 98, name: "Al-Bayyinah", a: 8 }, { n: 99, name: "Az-Zalzalah", a: 8 }, { n: 100, name: "Al-Adiyat", a: 11 },
+    { n: 101, name: "Al-Qari'ah", a: 11 }, { n: 102, name: "At-Takathur", a: 8 }, { n: 103, name: "Al-Asr", a: 3 }, { n: 104, name: "Al-Humazah", a: 9 },
+    { n: 105, name: "Al-Fil", a: 5 }, { n: 106, name: "Quraysh", a: 4 }, { n: 107, name: "Al-Ma'un", a: 7 }, { n: 108, name: "Al-Kawthar", a: 3 },
+    { n: 109, name: "Al-Kafirun", a: 6 }, { n: 110, name: "An-Nasr", a: 3 }, { n: 111, name: "Al-Masad", a: 5 }, { n: 112, name: "Al-Ikhlas", a: 4 },
+    { n: 113, name: "Al-Falaq", a: 5 }, { n: 114, name: "An-Nas", a: 6 }
+];
+
+async function loadSurah() {
+    var r = await api('/surah/' + APP.username);
+    if (r.success) { APP.surahs = r.surahs; renderSurahList(); }
+}
+
+function renderSurahList() {
+    var container = document.getElementById('surahList');
+    if (APP.surahs.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)"><p style="font-size:40px;margin-bottom:12px">📝</p><p>No surahs being memorized yet</p><p style="font-size:13px;margin-top:8px">Click "+ Add Surah" to start</p></div>';
+        return;
+    }
+    var html = '';
+    APP.surahs.forEach(function (s) {
+        var pct = Math.round((s.memorized_ayah / s.total_ayah) * 100);
+        var isComplete = s.completed_at;
+        html += '<div class="card" style="margin-bottom:12px"><div class="card-header"><h2 style="font-size:16px">' + s.surah_number + '. ' + s.surah_name + (isComplete ? ' ✅' : '') + '</h2><div style="display:flex;gap:8px;align-items:center"><span style="font-size:13px;color:var(--text-secondary)">' + s.memorized_ayah + '/' + s.total_ayah + ' ayah · ' + pct + '%</span><button class="btn btn-danger btn-sm" onclick="deleteSurah(' + s.id + ')">🗑</button></div></div>';
+        html += '<div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>';
+        if (!isComplete) {
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="range" min="0" max="' + s.total_ayah + '" value="' + s.memorized_ayah + '" style="flex:1" oninput="this.nextElementSibling.textContent=this.value" onchange="updateSurahProgress(' + s.id + ',this.value)"><span style="min-width:30px;color:var(--gold);font-weight:700">' + s.memorized_ayah + '</span></div>';
+        }
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+function openSurahPicker() {
+    var options = SURAH_LIST.map(function (s) { return s.n + '. ' + s.name + ' (' + s.a + ' ayah)'; }).join('\n');
+    var choice = prompt('Enter surah number (1-114):\n\nExamples:\n36 = Ya-Sin\n67 = Al-Mulk\n112 = Al-Ikhlas');
+    if (!choice) return;
+    var num = parseInt(choice);
+    if (num < 1 || num > 114) { showToast('Invalid surah number (1-114).', 'error'); return; }
+    var surah = SURAH_LIST[num - 1];
+    addSurah(surah.n, surah.name, surah.a);
+}
+
+async function addSurah(num, name, ayah) {
+    showLoading('Adding...');
+    var r = await api('/surah/add', { method: 'POST', body: { username: APP.username, surahNumber: num, surahName: name, totalAyah: ayah } });
+    hideLoading();
+    if (r.success) { showToast(r.message); loadSurah(); }
+    else showToast(r.error, 'error');
+}
+
+async function updateSurahProgress(id, value) {
+    var r = await api('/surah/update', { method: 'POST', body: { id: id, memorizedAyah: parseInt(value) } });
+    if (r.success) { showToast(r.message); loadSurah(); }
+}
+
+async function deleteSurah(id) {
+    if (!confirm('Remove this surah?')) return;
+    var r = await api('/surah/delete', { method: 'POST', body: { id: id } });
+    if (r.success) { showToast(r.message); loadSurah(); }
+}
+
+// ===================================================================
+// NAMAZ (SALAH)
+// ===================================================================
+
+var PRAYERS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+var PRAYER_LABELS = { fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha' };
+var PRAYER_TIMES = { fajr: '🌅', dhuhr: '☀️', asr: '🌤️', maghrib: '🌇', isha: '🌙' };
+
+async function loadNamaz() {
+    var month = APP.namazCalMonth + 1;
+    var r = await api('/namaz/' + APP.username + '/' + APP.namazCalYear + '/' + month);
+    if (r.success) { APP.namazData = r.data; renderNamazGrid(); }
+}
+
+function renderNamazGrid() {
+    var month = APP.namazCalMonth, year = APP.namazCalYear;
+    var title = document.getElementById('namazMonthTitle');
+    var container = document.getElementById('namazGrid');
+    var mn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    title.textContent = mn[month] + ' ' + year;
+
+    var dim = new Date(year, month + 1, 0).getDate();
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+
+    var html = '<table class="family-table" style="font-size:13px"><thead><tr><th>Date</th>';
+    PRAYERS.forEach(function (p) { html += '<th style="text-align:center">' + PRAYER_TIMES[p] + '<br>' + PRAYER_LABELS[p] + '</th>'; });
+    html += '</tr></thead><tbody>';
+
+    for (var d = dim; d >= 1; d--) {
+        var ds = year + '-' + pad(month + 1) + '-' + pad(d);
+        var dayData = APP.namazData[ds] || {};
+        var isToday = ds === todayStr;
+        var isFuture = new Date(ds) > today;
+        html += '<tr style="' + (isToday ? 'background:rgba(201,168,76,0.08)' : '') + '">';
+        html += '<td style="font-weight:' + (isToday ? '700' : '400') + ';color:' + (isToday ? 'var(--gold)' : 'var(--text-primary)') + '">' + d + (isToday ? ' ←' : '') + '</td>';
+
+        PRAYERS.forEach(function (p) {
+            var loc = dayData[p] || '';
+            var icon = loc === 'mosque' ? '🕌' : loc === 'home' ? '🏠' : '·';
+            var bg = loc === 'mosque' ? 'rgba(46,204,113,0.15)' : loc === 'home' ? 'rgba(52,152,219,0.15)' : '';
+            var oc = isFuture ? '' : 'onclick="cycleNamaz(\'' + ds + '\',\'' + p + '\',\'' + loc + '\')"';
+            html += '<td style="text-align:center;cursor:' + (isFuture ? 'default' : 'pointer') + ';background:' + bg + ';font-size:18px;border-radius:4px" ' + oc + '>' + icon + '</td>';
+        });
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function prevNamazMonth() { APP.namazCalMonth--; if (APP.namazCalMonth < 0) { APP.namazCalMonth = 11; APP.namazCalYear--; } loadNamaz(); }
+function nextNamazMonth() { APP.namazCalMonth++; if (APP.namazCalMonth > 11) { APP.namazCalMonth = 0; APP.namazCalYear++; } loadNamaz(); }
+
+async function cycleNamaz(dateStr, prayer, current) {
+    var next = current === '' ? 'mosque' : current === 'mosque' ? 'home' : 'missed';
+    var r = await api('/namaz/log', { method: 'POST', body: { username: APP.username, date: dateStr, prayer: prayer, location: next } });
+    if (r.success) { showToast(r.message); loadNamaz(); }
 }
 
 // ===================================================================
