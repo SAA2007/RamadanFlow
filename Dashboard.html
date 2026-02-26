@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+</head>
+
+<body>
+    <div class="page-wrapper">
+
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <span class="icon">🕌</span>
+                <h1>Taraweeh Tracker</h1>
+            </div>
+            <div class="header-right">
+                <select id="yearSelect" onchange="changeYear()">
+                    <script>
+                        var cy = new Date().getFullYear();
+                        for (var y = cy; y >= cy - 5; y--) {
+                            document.write('<option value="' + y + '">' + y + '</option>');
+                        }
+                    </script>
+                </select>
+                <div class="user-badge">
+                    <span>👤 <span id="displayName"></span></span>
+                    <span class="role" id="displayRole"></span>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <!-- QUICK STATS -->
+        <div class="main-content">
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTaraweeh">0</div>
+                    <div class="stat-label">🕌 Taraweeh</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statStreak">0</div>
+                    <div class="stat-label">🔥 Streak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statParas">0</div>
+                    <div class="stat-label">📖 Paras Read</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statKhatams">0</div>
+                    <div class="stat-label">✅ Khatams</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statFasting">0</div>
+                    <div class="stat-label">🍽️ Fasts</div>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="taraweeh" onclick="switchTab('taraweeh')">🕌 Taraweeh</button>
+                <button class="tab-btn" data-tab="quran" onclick="switchTab('quran')">📖 Quran</button>
+                <button class="tab-btn" data-tab="fasting" onclick="switchTab('fasting')">🍽️ Fasting</button>
+                <button class="tab-btn" data-tab="stats" onclick="switchTab('stats')">📊 Stats</button>
+                <button class="tab-btn" data-tab="admin" id="adminTabBtn" style="display:none"
+                    onclick="switchTab('admin')">👑 Admin</button>
+            </div>
+
+            <!-- TAB: TARAWEEH -->
+            <div class="tab-content active" id="tab-taraweeh">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🕌 Taraweeh Calendar</h2>
+                        <p style="font-size:13px;color:var(--text-secondary)">Click a date to log your prayer</p>
+                    </div>
+                    <div class="calendar">
+                        <div class="calendar-nav">
+                            <button onclick="prevMonth()">◀</button>
+                            <h3 id="taraweehMonthTitle"></h3>
+                            <button onclick="nextMonth()">▶</button>
+                        </div>
+                        <div class="calendar-grid" id="taraweehCalendar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: QURAN -->
+            <div class="tab-content" id="tab-quran">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📖 Quran Progress</h2>
+                        <div style="display:flex;gap:8px">
+                            <button class="btn btn-primary btn-sm" onclick="startNewKhatam('Arabic')">+ Arabic
+                                Khatam</button>
+                            <button class="btn btn-secondary btn-sm" onclick="startNewKhatam('Translation')">+
+                                Translation</button>
+                        </div>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+                        Click a para number to mark it complete. Start unlimited khatams — Arabic or Translation.
+                    </p>
+                    <div id="khatamList"></div>
+                </div>
+            </div>
+
+            <!-- TAB: FASTING -->
+            <div class="tab-content" id="tab-fasting">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🍽️ Fasting Tracker</h2>
+                        <p style="font-size:13px;color:var(--text-secondary)">Click a date to toggle fasting</p>
+                    </div>
+                    <div class="calendar">
+                        <div class="calendar-nav">
+                            <button onclick="prevFastingMonth()">◀</button>
+                            <h3 id="fastingMonthTitle"></h3>
+                            <button onclick="nextFastingMonth()">▶</button>
+                        </div>
+                        <div class="calendar-grid" id="fastingCalendar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: STATS -->
+            <div class="tab-content" id="tab-stats">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📊 Family Charts</h2>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr;gap:24px">
+                        <div id="taraweehChart"></div>
+                        <div id="quranChart"></div>
+                        <div id="fastingChart"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🏆 Family Leaderboard</h2>
+                    </div>
+                    <div id="leaderboardTable" style="overflow-x:auto"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🎖️ Badges</h2>
+                    </div>
+                    <div id="badgesContainer"></div>
+                </div>
+            </div>
+
+            <!-- TAB: ADMIN -->
+            <div class="tab-content" id="tab-admin">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>👑 User Management</h2>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+                        Reset passwords, promote/demote users, or remove accounts.
+                    </p>
+                    <div id="adminUserList"></div>
+                </div>
+            </div>
+
+        </div><!-- main-content -->
+
+        <!-- TARAWEEH MODAL -->
+        <div class="modal-overlay hidden" id="taraweehModal">
+            <div class="modal">
+                <h3>🕌 Log Taraweeh — <span id="taraweehModalDate"></span></h3>
+                <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">How many rakaat did you pray?
+                </p>
+
+                <div class="rakaat-options">
+                    <div class="rakaat-option selected" data-rakaat="8" onclick="selectRakaat(this)">
+                        <div class="number">8</div>
+                        <div class="label">Rakaat</div>
+                    </div>
+                    <div class="rakaat-option" data-rakaat="20" onclick="selectRakaat(this)">
+                        <div class="number">20</div>
+                        <div class="label">Rakaat</div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeTaraweehModal()">Cancel</button>
+                    <button class="btn btn-danger btn-sm" id="taraweehRemoveBtn" onclick="removeTaraweeh()"
+                        style="display:none">Remove</button>
+                    <button class="btn btn-primary" onclick="saveTaraweeh()">Save ✓</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOADING OVERLAY -->
+        <div class="loading-overlay hidden" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+    </div>
+
+    <?!= include('JavaScript'); ?>
+    <script>initApp();</script>
+</body>
+
+</html>

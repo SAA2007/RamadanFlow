@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+</head>
+
+<body>
+    <div class="page-wrapper">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="logo">
+                    <span class="icon">🕌</span>
+                    <h1>Create Account</h1>
+                    <p>Join your family's Ramadan journey</p>
+                </div>
+
+                <div id="alert" class="alert"></div>
+
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="username" placeholder="e.g. ahmed_k" required minlength="3"
+                            autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="email" placeholder="your@email.com" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="password" placeholder="At least 4 characters" required minlength="4"
+                            autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="confirmPassword" placeholder="Re-enter password" required
+                            autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="registerBtn">
+                        Create Account
+                    </button>
+                </form>
+
+                <div class="auth-link">
+                    Already have an account? <a href="#" onclick="goToLogin()">Sign In</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showAlert(msg, type) {
+            var el = document.getElementById('alert');
+            el.textContent = msg;
+            el.className = 'alert show alert-' + type;
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            var username = document.getElementById('username').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var pw = document.getElementById('password').value;
+            var cpw = document.getElementById('confirmPassword').value;
+            var btn = document.getElementById('registerBtn');
+
+            if (pw !== cpw) { showAlert('Passwords do not match.', 'error'); return; }
+            if (pw.length < 4) { showAlert('Password must be at least 4 characters.', 'error'); return; }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+            google.script.run
+                .withSuccessHandler(function (result) {
+                    if (result.success) {
+                        showAlert(result.message, 'success');
+                        setTimeout(function () { goToLogin(); }, 1500);
+                    } else {
+                        showAlert(result.error, 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Create Account';
+                    }
+                })
+                .withFailureHandler(function (err) {
+                    showAlert('Connection error. Try again.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account';
+                })
+                .registerUser(username, email, pw);
+        }
+
+        function goToLogin() {
+            var url = window.location.href;
+            if (url.indexOf('?') !== -1) url = url.split('?')[0];
+            window.top.location.href = url + '?page=Login';
+        }
+    </script>
+</body>
+
+</html>

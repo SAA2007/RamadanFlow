@@ -1,0 +1,22 @@
+# .gitignore for Taraweeh Tracker
+# This project contains only source files to be copied into Google Apps Script
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+antigravity.log
+
+# Temp files
+*.tmp
+*.bak
