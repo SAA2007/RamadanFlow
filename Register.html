@@ -51,8 +51,7 @@
     </div>
 
     <script>
-        var APP_URL = '';
-        google.script.run.withSuccessHandler(function (u) { APP_URL = u; }).getAppUrl();
+        var APP_URL = '<?= appUrl ?>';
 
         function showAlert(msg, type) {
             var el = document.getElementById('alert');

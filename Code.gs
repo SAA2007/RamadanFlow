@@ -26,6 +26,8 @@ function doGet(e) {
   var allowed = ['Login', 'Register', 'Dashboard'];
   if (allowed.indexOf(page) === -1) page = 'Login';
   var template = HtmlService.createTemplateFromFile(page);
+  // Inject deployment URL so pages can navigate without async calls
+  template.appUrl = ScriptApp.getService().getUrl();
   return template.evaluate()
     .setTitle('RamadanFlow')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
