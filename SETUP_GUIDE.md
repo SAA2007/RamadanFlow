@@ -1,81 +1,80 @@
-# 🕌 Setup Guide — RamadanFlow
+# 🕌 Setup & Deployment Guide — RamadanFlow
 
-Follow these steps to deploy. Takes ~10 minutes.
+RamadanFlow is a Single Page Application (SPA) built on Google Apps Script. It uses `clasp` for automated deployments.
 
 ---
 
-## Step 1: Create the Google Sheet
+## 1. Initial Setup (One-Time)
 
-1. Go to [sheets.google.com](https://sheets.google.com) → **+ Blank spreadsheet**
+### Create the Google Apps Script Project
+
+1. Go to [script.google.com](https://script.google.com) → **New Project**
 2. Name it: `RamadanFlow`
-3. You do NOT need to create tabs — the app creates them automatically
+3. Copy the **Script ID** from the URL (looks like `1KjNt...`).
 
----
+### Link Your Local Code via Clasp
 
-## Step 2: Open Apps Script Editor
+1. Open your terminal in the `RamadanFlow` folder.
+2. If you haven't logged in: `clasp login`
+3. Edit `.clasp.json` and paste your Script ID:
 
-1. In your Sheet → **Extensions** → **Apps Script**
-2. Delete everything in the default `Code.gs`
-
----
-
-## Step 3: Add the Code Files
-
-### 3a. Code.gs
-
-1. Paste the entire `Code.gs` from this project
-2. **Optional**: on line 9, paste your Sheet ID:
-
-   ```
-   const SPREADSHEET_ID = 'YOUR_SHEET_ID_HERE';
+   ```json
+   {
+     "scriptId": "YOUR_SCRIPT_ID_HERE",
+     "rootDir": "."
+   }
    ```
 
-   Or leave empty — it will use the attached sheet
+---
 
-### 3b. HTML Files
+## 2. Push Code 🚀 (Anytime you make changes)
 
-Click **+** → **HTML** for each file. Name them **exactly** (without .html):
+Run this in your terminal:
 
-| Create as | Paste from |
-|---|---|
-| `Login` | `Login.html` |
-| `Register` | `Register.html` |
-| `Dashboard` | `Dashboard.html` |
-| `Stylesheet` | `Stylesheet.html` |
-| `JavaScript` | `JavaScript.html` |
+```bash
+clasp push --force
+```
+
+*(This automatically uploads `Code.gs`, `Index.html`, `js`, `css`, etc. without manual copy-pasting).*
 
 ---
 
-## Step 4: Deploy
+## 3. Deploy as Web App 🌐
 
-1. **Deploy** → **New deployment**
-2. ⚙ → **Web app**
-3. **Execute as**: `Me` · **Who has access**: `Anyone`
-4. Click **Deploy** → **Authorize access** → Allow
-5. **Copy the Web App URL** — this is your family link!
+You must deploy the app to get a public link you can share with your family.
+
+### **First Time Deployment:**
+
+1. Open [script.google.com](https://script.google.com) and open your `RamadanFlow` project.
+2. Click **Deploy** (top right) → **New deployment**
+3. Click the ⚙️ gear icon → select **Web app**
+4. Set the following:
+   - **Description**: `v1.0 (or whatever version)`
+   - **Execute as**: `Me`
+   - **Who has access**: `Anyone`
+5. Click **Deploy** → **Authorize access** → Allow your Google account.
+6. **Copy the Web App URL** — this is the static link you send to your family!
+
+### **Updating an Existing Deployment:**
+
+*Important: If you create a "New deployment" every time, the URL changes. Do this instead:*
+
+1. Run `clasp push --force` on your computer.
+2. Go to the Apps Script editor.
+3. Click **Deploy** → **Manage deployments**.
+4. Click the ✏️ **pencil icon** next to your active deployment.
+5. Change **Version** to **New version**.
+6. Click **Deploy**.
+*(Your family's URL stays exactly the same, but the code updates instantly!)*
 
 ---
 
-## Step 5: First Login
+## 4. How to Use & Test
 
-1. Open the URL → **Register** → create your account
-2. **First account = admin** 👑 automatically
-3. Share the URL with family
-
----
-
-## Updating Later
-
-1. Edit files in Apps Script
-2. **Deploy** → **Manage deployments** → ✏ → **New version** → Deploy
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---|---|
-| Blank page | Check all file names match exactly |
-| "Unauthorized" | Re-deploy and re-authorize |
-| Slow load | Normal — 2-3s cold start is expected |
-| Forgot password | Admin resets it from Admin tab |
+1. **Go to your Web App URL.**
+2. **First User Registration:**
+   - Click **Register**. The first person to create an account is automatically granted **Admin 👑** rights.
+3. **Usage:**
+   - Log in.
+   - You can now log Taraweeh rakaats, start Quran Khatams (Arabic or Translation), and track fasting.
+   - The **Admin 👑** tab allows you to fix other family members' data or change their passwords if they forget.
