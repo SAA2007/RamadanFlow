@@ -22,11 +22,8 @@ const SHEET_SETTINGS = 'Settings';
 // ===================================================================
 
 function doGet(e) {
-  var page = e.parameter.page || 'Login';
-  var allowed = ['Login', 'Register', 'Dashboard'];
-  if (allowed.indexOf(page) === -1) page = 'Login';
-  var template = HtmlService.createTemplateFromFile(page);
-  // Inject deployment URL so pages can navigate without async calls
+  var template = HtmlService.createTemplateFromFile('Index');
+  // Inject deployment URL so pages can construct sharing links if needed
   template.appUrl = ScriptApp.getService().getUrl();
   return template.evaluate()
     .setTitle('RamadanFlow')

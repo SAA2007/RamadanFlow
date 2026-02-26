@@ -1,91 +1,74 @@
-<!DOCTYPE html>
-<html>
+<div class="page-wrapper" id="loginWrapper">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="logo">
+                <span class="icon">🕌</span>
+                <h1>RamadanFlow</h1>
+                <p>Family Ramadan Progress</p>
+            </div>
 
-<head>
-    <base target="_top">
-    <?!= include('Stylesheet'); ?>
-</head>
+            <div id="alert" class="alert"></div>
 
-<body>
-    <div class="page-wrapper">
-        <div class="auth-container">
-            <div class="auth-card">
-                <div class="logo">
-                    <span class="icon">🕌</span>
-                    <h1>RamadanFlow</h1>
-                    <p>Family Ramadan Progress</p>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email or Username</label>
+                    <input type="text" id="identifier" placeholder="Enter email or username" required
+                        autocomplete="username">
                 </div>
-
-                <div id="alert" class="alert"></div>
-
-                <form id="loginForm" onsubmit="handleLogin(event)">
-                    <div class="form-group">
-                        <label>Email or Username</label>
-                        <input type="text" id="identifier" placeholder="Enter email or username" required
-                            autocomplete="username">
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="password" placeholder="Enter password" required
-                            autocomplete="current-password">
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="loginBtn">
-                        Sign In
-                    </button>
-                </form>
-
-                <div class="auth-link">
-                    Don't have an account? <a href="#" onclick="goToRegister()">Register</a>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required
+                        autocomplete="current-password">
                 </div>
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="auth-link">
+                Don't have an account? <a href="#" onclick="goToPage('Register')">Register</a>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        var APP_URL = '<?= appUrl ?>';
+<script>
+    function showAlert(msg, type) {
+        var el = document.getElementById('alert');
+        el.textContent = msg;
+        el.className = 'alert show alert-' + type;
+    }
 
-        function showAlert(msg, type) {
-            var el = document.getElementById('alert');
-            el.textContent = msg;
-            el.className = 'alert show alert-' + type;
-        }
+    function handleLogin(e) {
+        e.preventDefault();
+        var id = document.getElementById('identifier').value.trim();
+        var pw = document.getElementById('password').value;
+        var btn = document.getElementById('loginBtn');
 
-        function handleLogin(e) {
-            e.preventDefault();
-            var id = document.getElementById('identifier').value.trim();
-            var pw = document.getElementById('password').value;
-            var btn = document.getElementById('loginBtn');
+        if (!id || !pw) { showAlert('Please fill in all fields.', 'error'); return; }
 
-            if (!id || !pw) { showAlert('Please fill in all fields.', 'error'); return; }
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Signing in...';
 
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Signing in...';
-
-            google.script.run
-                .withSuccessHandler(function (result) {
-                    if (result.success) {
-                        sessionStorage.setItem('username', result.username);
-                        sessionStorage.setItem('role', result.role);
-                        sessionStorage.setItem('email', result.email);
-                        window.top.location.href = APP_URL + '?page=Dashboard';
-                    } else {
-                        showAlert(result.error, 'error');
-                        btn.disabled = false;
-                        btn.textContent = 'Sign In';
-                    }
-                })
-                .withFailureHandler(function (err) {
-                    showAlert('Connection error. Try again.', 'error');
+        google.script.run
+            .withSuccessHandler(function (result) {
+                if (result.success) {
+                    sessionStorage.setItem('username', result.username);
+                    sessionStorage.setItem('role', result.role);
+                    sessionStorage.setItem('email', result.email);
+                    goToPage('Dashboard');
+                } else {
+                    showAlert(result.error, 'error');
                     btn.disabled = false;
                     btn.textContent = 'Sign In';
-                })
-                .loginUser(id, pw);
-        }
+                }
+            })
+            .withFailureHandler(function (err) {
+                showAlert('Connection error. Try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+            })
+            .loginUser(id, pw);
+    }
 
-        function goToRegister() {
-            window.top.location.href = APP_URL + '?page=Register';
-        }
-    </script>
-</body>
-
-</html>
+</script>

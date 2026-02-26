@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+</head>
+
+<body>
+    <?!= include('Login'); ?>
+    <?!= include('Register'); ?>
+    <?!= include('Dashboard'); ?>
+
+    <script>
+        var APP_URL = '<?= appUrl ?>';
+    </script>
+    <?!= include('JavaScript'); ?>
+    <script>
+        var origLoadAdmin = typeof loadAdmin !== 'undefined' ? loadAdmin : function () { };
+        loadAdmin = function () {
+            origLoadAdmin();
+            if (APP.role === 'admin' && APP.adminUsers && APP.adminUsers.length > 0) {
+                var sel = document.getElementById('adminEditUserSelect');
+                if (sel) {
+                    sel.innerHTML = '<option value="">— Select user —</option>';
+                    for (var i = 0; i < APP.adminUsers.length; i++) {
+                        sel.innerHTML += '<option value="' + APP.adminUsers[i].username + '">' + APP.adminUsers[i].username + '</option>';
+                    }
+                }
+            }
+        };
+        // Initialize the Single Page App
+        window.onload = function () {
+            initApp();
+        };
+    </script>
+</body>
+
+</html>

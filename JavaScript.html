@@ -42,11 +42,30 @@
     }
 
     function goToPage(page) {
-        // APP_URL is set by Dashboard.html template before this file loads
-        window.top.location.href = APP_URL + '?page=' + page;
+        // Hide all main wrappers
+        document.getElementById('loginWrapper').style.display = 'none';
+        var rw = document.getElementById('registerWrapper');
+        if (rw) rw.style.display = 'none';
+        document.getElementById('dashboardWrapper').style.display = 'none';
+
+        // Show the target wrapper
+        var targetId = page.toLowerCase() + 'Wrapper';
+        var el = document.getElementById(targetId);
+        if (el) el.style.display = 'block';
+
+        // Specific actions for Dashboard
+        if (page === 'Dashboard' && !APP.dashboardData) {
+            loadDashboard(); // Load data when transitioning to dashboard
+        }
     }
 
-    function logout() { sessionStorage.clear(); goToPage('Login'); }
+    function logout() {
+        sessionStorage.clear();
+        APP.username = '';
+        APP.dashboardData = null;
+        APP.taraweehData = null;
+        goToPage('Login');
+    }
 
     // ===================================================================
     // TABS
@@ -196,7 +215,10 @@
     // ===================================================================
 
     function loadTaraweeh() {
-        google.script.run.withSuccessHandler(function (r) { if (r.success) { APP.taraweehData = r.data; renderTaraweehCalendar(); } }).getUserTaraweehData(APP.username, APP.year);
+        google.script.run
+            .withFailureHandler(function (err) { console.error('Taraweeh fetch error:', err); })
+            .withSuccessHandler(function (r) { if (r.success) { APP.taraweehData = r.data; renderTaraweehCalendar(); } })
+            .getUserTaraweehData(APP.username, APP.year);
     }
 
     function renderTaraweehCalendar() {
@@ -279,7 +301,10 @@
 
     function loadQuran() {
         showLoading('Loading Quran...');
-        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { APP.khatams = r.khatams; renderKhatams(); } }).withFailureHandler(function () { hideLoading(); }).getUserKhatams(APP.username, APP.year);
+        google.script.run
+            .withFailureHandler(function (err) { console.error('Quran fetch error:', err); hideLoading(); })
+            .withSuccessHandler(function (r) { hideLoading(); if (r.success) { APP.khatams = r.khatams; renderKhatams(); } })
+            .getUserKhatams(APP.username, APP.year);
     }
 
     function renderKhatams() {
@@ -369,7 +394,10 @@
     // ===================================================================
 
     function loadFasting() {
-        google.script.run.withSuccessHandler(function (r) { if (r.success) { APP.fastingData = r.data; renderFastingCalendar(); } }).getUserFastingData(APP.username, APP.year);
+        google.script.run
+            .withFailureHandler(function (err) { console.error('Fasting fetch error:', err); })
+            .withSuccessHandler(function (r) { if (r.success) { APP.fastingData = r.data; renderFastingCalendar(); } })
+            .getUserFastingData(APP.username, APP.year);
     }
 
     function renderFastingCalendar() {
@@ -518,7 +546,10 @@
     function loadAdmin() {
         if (APP.role !== 'admin') return;
         showLoading('Loading users...');
-        google.script.run.withSuccessHandler(function (r) { hideLoading(); if (r.success) { APP.adminUsers = r.users; renderAdminUsers(r.users); } }).withFailureHandler(function () { hideLoading(); }).adminGetAllUsers(APP.username);
+        google.script.run
+            .withFailureHandler(function (err) { console.error('Admin users fetch error:', err); hideLoading(); })
+            .withSuccessHandler(function (r) { hideLoading(); if (r.success) { APP.adminUsers = r.users; renderAdminUsers(r.users); } })
+            .adminGetAllUsers(APP.username);
     }
 
     function filterAdminUsers() {
