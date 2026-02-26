@@ -1,22 +1,40 @@
-# .gitignore for Taraweeh Tracker
-# This project contains only source files to be copied into Google Apps Script
+# ============================================================
+# RamadanFlow .gitignore
+# ============================================================
 
-# OS files
+# --- Node.js ---
+node_modules/
+npm-debug.log*
+
+# --- Environment ---
+.env
+.env.*
+!.env.example
+
+# --- Database ---
+*.db
+*.db-wal
+*.db-shm
+v3/data/
+
+# --- OS ---
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editor files
+# --- Editors ---
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Logs
+# --- Logs ---
 *.log
-antigravity.log
 
-# Temp files
+# --- Temp ---
 *.tmp
 *.bak
+
+# --- CLASP (v2 legacy) ---
+v2/.clasp.json

@@ -3,6 +3,41 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+
+// ===================================================================
+// AUTO-SETUP: Generate .env if missing
+// ===================================================================
+
+const envPath = path.join(__dirname, '.env');
+if (!fs.existsSync(envPath)) {
+    const secret = crypto.randomBytes(32).toString('hex');
+    const envContent = `PORT=3000\nJWT_SECRET=${secret}\n`;
+    fs.writeFileSync(envPath, envContent);
+    console.log('');
+    console.log('  ✅ Created .env with auto-generated JWT_SECRET');
+    console.log('  ⚠️  Restart the server to load the new .env');
+    console.log('');
+    // Reload env vars now
+    require('dotenv').config({ path: envPath, override: true });
+}
+
+// Validate JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET === 'ramadanflow_default_secret') {
+    console.error('');
+    console.error('  ❌ FATAL: JWT_SECRET is not set or is the default value.');
+    console.error('     Edit .env and set a proper JWT_SECRET.');
+    console.error('');
+    process.exit(1);
+}
+
+// Ensure data directory exists
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
 
 const { authMiddleware, adminMiddleware } = require('./middleware/auth');
 

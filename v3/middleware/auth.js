@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ramadanflow_default_secret';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function generateToken(user) {
     return jwt.sign(

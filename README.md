@@ -1,47 +1,47 @@
-# 🕌 RamadanFlow — Family Ramadan Progress Tracker
+# 🕌 RamadanFlow
 
-A **free**, mobile-friendly web app for families to track Ramadan progress together — built on **Google Sheets + Google Apps Script** (zero hosting cost).
+A family Ramadan activity tracker — track taraweeh, Quran, fasting, azkar, surah memorization, and daily namaz.
+
+## Versions
+
+| Version | Stack | Folder |
+|:--------|:------|:-------|
+| **v2** | Google Apps Script (legacy) | [`v2/`](v2/) |
+| **v3** | Node.js + Express + SQLite (self-hosted) | [`v3/`](v3/) |
+
+## Quick Start (v3)
+
+```bash
+cd v3
+npm install
+node server.js
+```
+
+On first run, the server will:
+
+1. Auto-create `.env` with a secure random `JWT_SECRET`
+2. Auto-create the `data/` directory for the SQLite database
+3. Start at `http://localhost:3000`
+
+> **First user to register becomes admin** 👑
+
+## Deploy to Raspberry Pi
+
+See the full guide: [`v3/PI_SETUP.md`](v3/PI_SETUP.md)
+
+```bash
+cd v3 && npm install && node server.js
+# Then: pm2 start ecosystem.config.js
+# Then: set up Cloudflare Tunnel for HTTPS
+```
 
 ## Features
 
-| Feature | Description |
-|---|---|
-| 🕌 **Taraweeh Calendar** | Click-to-log daily prayers (8 or 20 rakaat), Ramadan days auto-highlighted |
-| 📖 **Multi-Khatam** | Track unlimited Arabic + Translation Quran rounds with undo protection |
-| 🍽️ **Fasting Tracker** | Click-to-log daily fasts on a calendar |
-| 📊 **Statistics** | Family bar charts, ranked leaderboard with score formula |
-| 🎖️ **10 Badges** | Achievement badges with earner usernames |
-| 👤 **Profile** | Change password, view account info |
-| 👑 **Admin Panel** | Search/filter users, reset passwords, edit any user's data, CSV export |
-| 👥 **15+ Users** | Concurrent access with server-side locking |
-| 📅 **Multi-Year** | Reusable across Ramadans, auto-fetches Ramadan dates |
-| 🌍 **Multi-Region** | Works for family in KSA, Azerbaijan, Pakistan, or anywhere |
-
-## Tech Stack
-
-- **Database:** Google Sheets (6 tabs auto-created)
-- **Backend:** Google Apps Script (Code.gs)
-- **Frontend:** HTML + CSS + JavaScript
-- **Hosting:** Google (free forever)
-- **Ramadan Dates:** Aladhan API (auto-cached)
-
-## Quick Start
-
-See [SETUP_GUIDE.md](SETUP_GUIDE.md) for step-by-step deployment.
-Share [USER_GUIDE.md](USER_GUIDE.md) with family members.
-
-## Files
-
-| File | Purpose |
-|---|---|
-| `Code.gs` | Backend — auth, CRUD, badges, admin, Ramadan API, CSV |
-| `Dashboard.html` | Main app with 5 tabs |
-| `JavaScript.html` | Client-side logic |
-| `Stylesheet.html` | Islamic dark theme CSS |
-| `Login.html` | Login page |
-| `Register.html` | Registration page |
-
-## Version History
-
-- **v2.1** — Multi-khatam, fasting, badges, Ramadan dates, profile, admin improvements, CSV export
-- **v2.0** — Initial release
+- 🕌 **Taraweeh** — calendar tracker with custom rakaat (1-20)
+- 📖 **Quran** — khatam tracker (Arabic / Translation, 30 paras)
+- 🍽️ **Fasting** — daily fasting log
+- 📿 **Azkar** — morning / evening daily toggle
+- 📝 **Surah** — memorization progress (114 surahs, ayah slider)
+- 🕌 **Namaz** — 5 daily prayers (mosque / home / missed)
+- 📊 **Stats** — leaderboard, charts, badges
+- 👑 **Admin** — user management, data export
