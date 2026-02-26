@@ -1,0 +1,21 @@
+{
+  "name": "ramadanflow",
+  "version": "3.0.0",
+  "description": "Family Ramadan progress tracker — self-hosted on Raspberry Pi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.3"
+  }
+}
