@@ -74,10 +74,18 @@ Because you have **CasaOS** running on port 80, the script will **NOT** attempt 
 
 To get standard HTTPS without adding ports to the URL:
 
+> [!WARNING]
+> **CasaOS Port Conflict**
+> Nginx Proxy Manager occupies ports 80 and 443 by default for built-in Nginx use, and port 81 for the admin page.
+> **Before installing**, you MUST change your CasaOS WebUI port (in CasaOS settings) to something other than 80/81/443 (e.g., `8080` or `90`). Otherwise, installing NPM will fail or cause CasaOS to run abnormally!
+
 1. Open your CasaOS Dashboard.
 2. Go to the App Store and install **Nginx Proxy Manager** or **Cloudflared**.
-3. Add a new proxy host pointing `myramadan.duckdns.org` to `localhost:3000` (or your Pi's local IP on port 3000).
-4. Request an SSL certificate directly from inside Nginx Proxy Manager using DNS-01 or HTTP-01 challenges.
+3. *If using Nginx Proxy Manager*, log into the admin panel (Port `81`).
+   - Default Username: `admin@example.com`
+   - Default Password: `changeme`
+4. Add a new proxy host pointing `myramadan.duckdns.org` to `localhost:3000` (or your Pi's local IP on port 3000).
+5. Go to the SSL tab and request a new certificate to enable HTTPS.
 
 ---
 
