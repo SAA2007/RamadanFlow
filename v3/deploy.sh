@@ -44,7 +44,11 @@ systemctl disable apache2 2>/dev/null || true
 systemctl stop lighttpd 2>/dev/null || true
 systemctl disable lighttpd 2>/dev/null || true
 
-apt install -y curl wget git nano cron nginx certbot python3-certbot-nginx build-essential
+apt install -y curl wget git nano cron nginx certbot python3-certbot-nginx build-essential psmisc lsof
+
+# Forcibly free ports
+fuser -k 80/tcp 2>/dev/null || true
+fuser -k 443/tcp 2>/dev/null || true
 
 
 # ==========================================
@@ -128,7 +132,7 @@ EOF
 ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
-systemctl restart nginx
+systemctl restart nginx || { echo "❌ Nginx failed to start! Printing logs:"; journalctl -xeu nginx.service --no-pager | tail -n 30; exit 1; }
 
 # ==========================================
 # 7. SSL CERTIFICATE (CERTBOT)
