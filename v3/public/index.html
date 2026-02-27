@@ -402,6 +402,44 @@
             </div>
         </div>
 
+        <!-- AZKAR MODAL -->
+        <div class="modal-overlay hidden" id="azkarModal">
+            <div class="modal">
+                <h3>📿 Log Azkar — <span id="azkarModalDate"></span></h3>
+                <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Which daily Dhikr have you
+                    completed?</p>
+
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+                    <label
+                        style="display:flex;align-items:center;padding:16px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;gap:16px">
+                        <input type="checkbox" id="azkarMorningCheck"
+                            style="width:24px;height:24px;accent-color:var(--gold)">
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:16px">☀️ Morning Azkar</div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">After Fajr to Sunrise
+                            </div>
+                        </div>
+                    </label>
+
+                    <label
+                        style="display:flex;align-items:center;padding:16px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;gap:16px">
+                        <input type="checkbox" id="azkarEveningCheck"
+                            style="width:24px;height:24px;accent-color:var(--gold)">
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:16px">🌙 Evening Azkar</div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">After Asr to Maghrib
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeAzkarModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveAzkarDay()">Save ✓</button>
+                </div>
+            </div>
+        </div>
+
         <!-- PROFILE MODAL -->
         <div class="modal-overlay hidden" id="profileModal">
             <div class="modal">

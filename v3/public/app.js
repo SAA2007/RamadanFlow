@@ -792,7 +792,7 @@ function renderAzkarCalendar() {
         if (hasMorning) icons += '☀️';
         if (hasEvening) icons += '🌙';
 
-        var oc = isFuture ? '' : ' onclick="openAzkarDay(\'' + ds + '\')"';
+        var oc = isFuture ? '' : ' onclick="openAzkarModal(\'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><span class="rakaat-badge">' + icons + '</span></div>';
     }
     container.innerHTML = html;
@@ -801,25 +801,38 @@ function renderAzkarCalendar() {
 function prevAzkarMonth() { APP.azkarCalMonth--; if (APP.azkarCalMonth < 0) { APP.azkarCalMonth = 11; APP.azkarCalYear--; } renderAzkarCalendar(); }
 function nextAzkarMonth() { APP.azkarCalMonth++; if (APP.azkarCalMonth > 11) { APP.azkarCalMonth = 0; APP.azkarCalYear++; } renderAzkarCalendar(); }
 
-async function openAzkarDay(dateStr) {
+function openAzkarModal(dateStr) {
+    var modal = document.getElementById('azkarModal');
+    modal.classList.remove('hidden');
+    modal.setAttribute('data-date', dateStr);
+
+    // Format date nicely: "Mon, Mar 12, 2026"
+    var dateObj = new Date(dateStr + 'T00:00:00'); // avoid timezone offsets shifting day backward
+    var displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    document.getElementById('azkarModalDate').textContent = displayDate;
+
     var entry = APP.azkarData[dateStr] || {};
-    var m = !!entry.morning;
-    var e = !!entry.evening;
+    document.getElementById('azkarMorningCheck').checked = !!entry.morning;
+    document.getElementById('azkarEveningCheck').checked = !!entry.evening;
+}
 
-    var newM = 0;
-    var newE = 0;
+function closeAzkarModal() {
+    document.getElementById('azkarModal').classList.add('hidden');
+}
 
-    // Tri-State Cycle: Empty (0,0) -> Moon (1,0) -> Moon+Sun (1,1) -> Empty (0,0)
-    if (!m && !e) { newM = 1; newE = 0; }
-    else if (m && !e) { newM = 1; newE = 1; }
-    else { newM = 0; newE = 0; }
+async function saveAzkarDay() {
+    var modal = document.getElementById('azkarModal');
+    var ds = modal.getAttribute('data-date');
 
-    var r = await api('/azkar/log', { method: 'POST', body: { date: dateStr, morning: newM, evening: newE } });
-    if (r.success) {
-        if (newM === 0 && newE === 0) showToast("Removed ✅");
-        else showToast(r.message);
-        loadAzkar();
-    }
+    var mChecked = document.getElementById('azkarMorningCheck').checked;
+    var eChecked = document.getElementById('azkarEveningCheck').checked;
+
+    closeAzkarModal();
+    showLoading('Saving...');
+    var r = await api('/azkar/log', { method: 'POST', body: { date: ds, morning: mChecked, evening: eChecked } });
+    hideLoading();
+
+    if (r.success) { showToast(r.message); loadAzkar(); refreshDashboard(); }
 }
 
 // ===================================================================
