@@ -149,12 +149,14 @@
             </div>
 
             <!-- MULTI-REGION TRACKER -->
-            <div id="multiRegionTracker" class="multi-region-tracker" style="display:none">
-                <h4 id="multiRegionTitle">🌍 Ramadan Expected Start</h4>
-                <div class="region-dates">
-                    <span class="badge region-badge">🇸🇦 KSA: <strong id="ksaStart">...</strong></span>
-                    <span class="badge region-badge">🇵🇰 PAK: <strong id="pakStart">...</strong></span>
-                    <span class="badge region-badge">🇦🇿 AZ: <strong id="azStart">...</strong></span>
+            <div id="multiRegionTracker" class="multi-region-tracker"
+                style="display:none; text-align: center; margin-bottom: 20px;">
+                <h4 id="multiRegionTitle" style="color: var(--gold); margin-bottom: 8px;">⏳ Expected Ramadan Duration
+                </h4>
+                <div class="region-dates" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                    <span class="badge region-badge ksa-badge">🇸🇦 KSA: <strong id="ksaStart">...</strong></span>
+                    <span class="badge region-badge pak-badge">🇵🇰 PAK: <strong id="pakStart">...</strong></span>
+                    <span class="badge region-badge az-badge">🇦🇿 AZ: <strong id="azStart">...</strong></span>
                 </div>
             </div>
 
@@ -396,9 +398,9 @@
                 <h3>🕌 Log Taraweeh — <span id="taraweehModalDate"></span></h3>
                 <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">How many rakaat?</p>
                 <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
-                    <input type="number" id="rakaatInput" min="1" max="20" value="8"
+                    <input type="number" id="rakaatInput" min="2" max="20" step="2" value="8"
                         style="width:80px;padding:12px;font-size:20px;font-weight:700;text-align:center;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--gold);font-family:'Inter',sans-serif">
-                    <span style="color:var(--text-secondary);font-size:14px">rakaat (1–20)</span>
+                    <span style="color:var(--text-secondary);font-size:14px">rakaat (2–20)</span>
                 </div>
                 <div style="display:flex;gap:8px;margin-top:8px">
                     <button class="btn btn-secondary btn-sm"

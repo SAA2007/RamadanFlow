@@ -63,7 +63,7 @@ router.get('/:year', (req, res) => {
                 (completedKhatams * 50) +
                 (fastingCount * 10) +
                 (azkarPoints * 1) +
-                (namazMosque * 3) +
+                (namazMosque * 2) +
                 (namazHome * 1) +
                 (streak * 2)
             );

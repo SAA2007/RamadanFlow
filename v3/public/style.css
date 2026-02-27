@@ -1186,3 +1186,43 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* --- Multi-Region Badges --- */
+  .ksa-badge {
+    background: rgba(46, 204, 113, 0.2);
+    border: 1px solid #2ecc71;
+    color: #2ecc71;
+  }
+
+  .pak-badge {
+    background: rgba(52, 152, 219, 0.2);
+    border: 1px solid #3498db;
+    color: #3498db;
+  }
+
+  .az-badge {
+    background: rgba(155, 89, 182, 0.2);
+    border: 1px solid #9b59b6;
+    color: #9b59b6;
+  }
+
+  .calendar-dots {
+    position: absolute;
+    bottom: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 90%;
+  }
+
+  .region-start-dot {
+    font-size: 8px;
+    padding: 1px 2px;
+    border-radius: 2px;
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }

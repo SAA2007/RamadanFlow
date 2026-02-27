@@ -237,6 +237,17 @@ async function fetchRamadanDates() {
     var result = await api('/ramadan/' + APP.year);
     if (result.success && result.dates) {
         APP.ramadanDates = result.dates;
+        var mrTitle = document.getElementById('multiRegionTitle');
+        if (mrTitle) {
+            var today = new Date().toISOString().slice(0, 10);
+            if (today >= APP.ramadanDates.start && today <= APP.ramadanDates.end) {
+                mrTitle.innerHTML = '🌙 Ramadan Active (' + APP.ramadanDates.start + ' to ' + APP.ramadanDates.end + ')';
+            } else if (today < APP.ramadanDates.start) {
+                mrTitle.innerHTML = '⏳ Expected Ramadan: ' + APP.ramadanDates.start + ' to ' + APP.ramadanDates.end;
+            } else {
+                mrTitle.innerHTML = '✨ Ramadan Ended (' + APP.ramadanDates.start + ' to ' + APP.ramadanDates.end + ')';
+            }
+        }
     }
 }
 
@@ -255,20 +266,30 @@ function getRamadanStartMonth() {
 // DASHBOARD
 // ===================================================================
 
+APP.regionStarts = {};
 async function loadMultiRegionTracker() {
     var el = document.getElementById('multiRegionTracker');
     if (!el) return;
 
-    document.getElementById('ksaStart').textContent = '...';
-    document.getElementById('pakStart').textContent = '...';
-    document.getElementById('azStart').textContent = '...';
     el.style.display = 'block';
 
     var result = await api('/ramadan/all-regions/' + APP.year);
     if (result.success && result.regions) {
-        if (result.regions.ksa) document.getElementById('ksaStart').textContent = result.regions.ksa.start;
-        if (result.regions.pak) document.getElementById('pakStart').textContent = result.regions.pak.start;
-        if (result.regions.az) document.getElementById('azStart').textContent = result.regions.az.start;
+        if (result.regions.ksa) {
+            document.getElementById('ksaStart').textContent = result.regions.ksa.start;
+            APP.regionStarts.ksa = result.regions.ksa.start;
+        }
+        if (result.regions.pak) {
+            document.getElementById('pakStart').textContent = result.regions.pak.start;
+            APP.regionStarts.pak = result.regions.pak.start;
+        }
+        if (result.regions.az) {
+            document.getElementById('azStart').textContent = result.regions.az.start;
+            APP.regionStarts.az = result.regions.az.start;
+        }
+        // re-render calendars so badges show up
+        if (document.getElementById('tab-taraweeh').classList.contains('active')) renderTaraweehCalendar();
+        if (document.getElementById('tab-fasting').classList.contains('active')) renderFastingCalendar();
     }
 }
 
@@ -349,9 +370,15 @@ function renderTaraweehCalendar() {
         if (entry && entry.completed) classes += ' completed';
         if (isRamadanDay(ds)) classes += ' ramadan';
 
+        var regionText = '';
+        if (APP.regionStarts) {
+            if (APP.regionStarts.ksa === ds) regionText += '<div class="region-start-dot ksa-badge">🇸🇦 KSA</div>';
+            if (APP.regionStarts.pak === ds) regionText += '<div class="region-start-dot pak-badge">🇵🇰 PAK</div>';
+            if (APP.regionStarts.az === ds) regionText += '<div class="region-start-dot az-badge">🇦🇿 AZ</div>';
+        }
         var rb = (entry && entry.completed && entry.rakaat) ? '<span class="rakaat-badge">' + entry.rakaat + 'r</span>' : '';
         var oc = isFuture ? '' : ' onclick="openTaraweehModal(\'' + ds + '\')"';
-        html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span>' + rb + '</div>';
+        html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><div class="calendar-dots">' + regionText + '</div>' + rb + '</div>';
     }
     container.innerHTML = html;
 }
@@ -374,7 +401,8 @@ function closeTaraweehModal() { document.getElementById('taraweehModal').classLi
 async function saveTaraweeh() {
     var modal = document.getElementById('taraweehModal');
     var ds = modal.getAttribute('data-date');
-    var rakaat = Math.min(20, Math.max(1, parseInt(document.getElementById('rakaatInput').value) || 8));
+    var rakaat = Math.min(20, Math.max(2, parseInt(document.getElementById('rakaatInput').value) || 8));
+    if (rakaat % 2 !== 0) rakaat -= 1;
     closeTaraweehModal(); showLoading('Saving...');
     var r = await api('/taraweeh/log', { method: 'POST', body: { date: ds, completed: true, rakaat: rakaat } });
     hideLoading();
@@ -484,8 +512,14 @@ function renderFastingCalendar() {
         if (entry && entry.completed) classes += ' completed';
         if (isRamadanDay(ds)) classes += ' ramadan';
 
+        var regionText = '';
+        if (APP.regionStarts) {
+            if (APP.regionStarts.ksa === ds) regionText += '<div class="region-start-dot ksa-badge">🇸🇦 KSA</div>';
+            if (APP.regionStarts.pak === ds) regionText += '<div class="region-start-dot pak-badge">🇵🇰 PAK</div>';
+            if (APP.regionStarts.az === ds) regionText += '<div class="region-start-dot az-badge">🇦🇿 AZ</div>';
+        }
         var oc = isFuture ? '' : ' onclick="toggleFasting(\'' + ds + '\')"';
-        html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span></div>';
+        html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><div class="calendar-dots">' + regionText + '</div></div>';
     }
     container.innerHTML = html;
 }
@@ -586,11 +620,15 @@ function renderBadges() {
         var opacity = earned ? '1' : '0.5';
 
         if (def.hidden && !earned) {
-            // Veiled badge logic: show it, but conceal identity
-            displayEmoji = '❓';
-            displayName = '???';
-            displayDesc = 'Secret achievement';
-            opacity = '0.3';
+            if (APP.role !== 'admin') {
+                displayEmoji = '❓';
+                displayName = '???';
+                displayDesc = 'Secret achievement';
+                opacity = '0.3';
+            } else {
+                displayDesc = def.desc + ' (Hidden from users)';
+                opacity = '0.5';
+            }
         }
 
         html += '<div style="background:' + (earned ? 'rgba(201,168,76,0.1)' : 'var(--bg-secondary)') + ';border:1px solid ' + (earned ? 'var(--gold)' : 'var(--border-color)') + ';border-radius:var(--radius-sm);padding:16px;text-align:center;opacity:' + opacity + '">';
