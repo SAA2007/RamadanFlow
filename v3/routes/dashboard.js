@@ -40,8 +40,15 @@ router.get('/:year', (req, res) => {
             // Fasting
             const fastingCount = db.prepare('SELECT COUNT(*) as c FROM fasting WHERE username = ? AND year = ? AND completed = ?').get(u.username, year, 'YES').c;
 
-            // Azkar — count days with at least one (morning or evening)
-            const azkarCount = db.prepare("SELECT COUNT(*) as c FROM azkar WHERE username = ? AND date LIKE ? AND (morning = 1 OR evening = 1)").get(u.username, year + '%').c;
+            // Azkar — each morning or evening counts as 1 separate instance
+            const azkarRows = db.prepare("SELECT morning, evening FROM azkar WHERE username = ? AND date LIKE ?").all(u.username, year + '%');
+            let azkarPoints = 0;
+            let azkarCount = 0; // Total days they did at least one
+            azkarRows.forEach(r => {
+                if (r.morning === 1) azkarPoints += 1;
+                if (r.evening === 1) azkarPoints += 1;
+                if (r.morning === 1 || r.evening === 1) azkarCount += 1;
+            });
 
             // Namaz — count prayers by location
             const namazRows = db.prepare("SELECT location FROM namaz WHERE username = ? AND date LIKE ? AND location != 'missed'").all(u.username, year + '%');
@@ -55,7 +62,7 @@ router.get('/:year', (req, res) => {
                 (totalParas * 5) +
                 (completedKhatams * 50) +
                 (fastingCount * 10) +
-                (azkarCount * 2) +
+                (azkarPoints * 1) +
                 (namazMosque * 3) +
                 (namazHome * 1) +
                 (streak * 2)

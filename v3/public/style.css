@@ -372,6 +372,43 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
 
+  /* --- Multi-Region Tracker --- */
+  .multi-region-tracker {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .multi-region-tracker h4 {
+    margin-bottom: 12px;
+    font-size: 16px;
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  .region-dates {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .region-badge {
+    background: var(--bg-body);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .region-badge strong {
+    color: var(--text-primary);
+  }
+
   .tab-content {
     display: none;
     animation: fadeInUp 0.3s ease;

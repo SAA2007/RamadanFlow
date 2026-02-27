@@ -32,6 +32,56 @@ router.post('/region', async (req, res) => {
     }
 });
 
+// GET /api/ramadan/all-regions/:year
+router.get('/all-regions/:year', async (req, res) => {
+    try {
+        const year = parseInt(req.params.year);
+        const key = 'ramadan_all_regions_' + year;
+
+        // Check cache
+        const cached = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+        if (cached) {
+            try { return res.json({ success: true, regions: JSON.parse(cached.value) }); } catch (e) { }
+        }
+
+        const regionsToCheck = [
+            { id: 'ksa', name: 'Saudi Arabia (Makkah)', city: 'Makkah', country: 'Saudi Arabia' },
+            { id: 'pak', name: 'Pakistan (Islamabad)', city: 'Islamabad', country: 'Pakistan' },
+            { id: 'az', name: 'Azerbaijan (Baku)', city: 'Baku', country: 'Azerbaijan' }
+        ];
+
+        const results = {};
+        for (const r of regionsToCheck) {
+            const method = r.id === 'ksa' ? 4 : 2; // Use Umm al-Qura for KSA
+            const url = `https://api.aladhan.com/v1/calendarByCity/${year}?city=${encodeURIComponent(r.city)}&country=${encodeURIComponent(r.country)}&method=${method}`;
+            const response = await fetch(url);
+            const json = await response.json();
+            if (json.code === 200 && json.data) {
+                let ramadanStart = null;
+                for (let m = 1; m <= 12; m++) {
+                    const days = json.data[m.toString()];
+                    if (days) {
+                        const firstDay = days.find(d => d.hijri.month.number === 9);
+                        if (firstDay) {
+                            const dateParts = firstDay.gregorian.date.split('-');
+                            ramadanStart = dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0];
+                            break;
+                        }
+                    }
+                }
+                if (ramadanStart) {
+                    results[r.id] = { name: r.name, start: ramadanStart };
+                }
+            }
+        }
+
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, JSON.stringify(results));
+        res.json({ success: true, regions: results });
+    } catch (err) {
+        res.json({ success: false, error: 'Failed' });
+    }
+});
+
 // GET /api/ramadan/:year
 router.get('/:year', async (req, res) => {
     try {
@@ -54,30 +104,44 @@ router.get('/:year', async (req, res) => {
 
         let url = '';
         if (region && region.city && region.country) {
-            url = `https://api.aladhan.com/v1/hijriCalendarByCity/9/${year}?city=${encodeURIComponent(region.city)}&country=${encodeURIComponent(region.country)}&method=2`;
+            url = `https://api.aladhan.com/v1/calendarByCity/${year}?city=${encodeURIComponent(region.city)}&country=${encodeURIComponent(region.country)}&method=2`;
         } else {
             // Default global (Mecca approximate)
-            url = `https://api.aladhan.com/v1/hijriCalendar/9/${year}?method=2`;
+            url = `https://api.aladhan.com/v1/calendarByCity/${year}?city=Makkah&country=Saudi%20Arabia&method=4`;
         }
 
         const response = await fetch(url);
         const json = await response.json();
 
-        if (json.code === 200 && json.data && json.data.length > 0) {
-            const firstDay = json.data[0].gregorian.date; // DD-MM-YYYY
-            const lastDay = json.data[json.data.length - 1].gregorian.date;
+        if (json.code === 200 && json.data) {
+            let startDay = null;
+            let endDay = null;
 
-            const startParts = firstDay.split('-');
-            const endParts = lastDay.split('-');
-            const startDate = startParts[2] + '-' + startParts[1] + '-' + startParts[0];
-            const endDate = endParts[2] + '-' + endParts[1] + '-' + endParts[0];
+            for (let m = 1; m <= 12; m++) {
+                const days = json.data[m.toString()];
+                if (days) {
+                    for (const d of days) {
+                        if (d.hijri.month.number === 9) {
+                            if (!startDay) startDay = d.gregorian.date;
+                            endDay = d.gregorian.date;
+                        }
+                    }
+                }
+            }
 
-            const result = { start: startDate, end: endDate };
+            if (startDay && endDay) {
+                const startParts = startDay.split('-');
+                const endParts = endDay.split('-');
+                const startDate = startParts[2] + '-' + startParts[1] + '-' + startParts[0];
+                const endDate = endParts[2] + '-' + endParts[1] + '-' + endParts[0];
 
-            // Cache it
-            db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, JSON.stringify(result));
+                const result = { start: startDate, end: endDate };
 
-            return res.json({ success: true, dates: result });
+                // Cache it
+                db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, JSON.stringify(result));
+
+                return res.json({ success: true, dates: result });
+            }
         }
 
         res.json({ success: false, error: 'Could not fetch dates for ' + year });

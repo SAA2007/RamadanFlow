@@ -159,6 +159,7 @@ function initDashboard() {
     if (APP.role === 'admin') document.getElementById('adminTabBtn').style.display = '';
     showSkeleton();
     fetchRamadanDates();
+    loadMultiRegionTracker();
     loadDashboard();
 }
 
@@ -195,6 +196,7 @@ function switchTab(tab) {
 
 function changeYear() {
     APP.year = parseInt(document.getElementById('yearSelect').value);
+    loadMultiRegionTracker();
     loadDashboard();
 }
 
@@ -252,6 +254,23 @@ function getRamadanStartMonth() {
 // ===================================================================
 // DASHBOARD
 // ===================================================================
+
+async function loadMultiRegionTracker() {
+    var el = document.getElementById('multiRegionTracker');
+    if (!el) return;
+
+    document.getElementById('ksaStart').textContent = '...';
+    document.getElementById('pakStart').textContent = '...';
+    document.getElementById('azStart').textContent = '...';
+    el.style.display = 'block';
+
+    var result = await api('/ramadan/all-regions/' + APP.year);
+    if (result.success && result.regions) {
+        if (result.regions.ksa) document.getElementById('ksaStart').textContent = result.regions.ksa.start;
+        if (result.regions.pak) document.getElementById('pakStart').textContent = result.regions.pak.start;
+        if (result.regions.az) document.getElementById('azStart').textContent = result.regions.az.start;
+    }
+}
 
 async function loadDashboard() {
     var result = await api('/dashboard/' + APP.year);
