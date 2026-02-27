@@ -6,10 +6,10 @@
 set -e
 
 # ==========================================
-# CONFIGURATION
+# CONFIGURATION 
 # ==========================================
-DOMAIN="myramadan.duckdns.org"
-DUCKDNS_TOKEN="94e7fa22-5527-4243-a93a-6785067d7b6a"
+read -p "Enter your DuckDNS Domain (e.g. myramadan.duckdns.org): " DOMAIN
+read -p "Enter your DuckDNS Token (e.g. 94e7...): " DUCKDNS_TOKEN
 PORT=3000
 APP_DIR="/home/$SUDO_USER/RamadanFlow/v3"
 
