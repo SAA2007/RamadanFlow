@@ -620,6 +620,15 @@ async function changePasswordSubmit() {
 
 async function loadAdmin() {
     if (APP.role !== 'admin') return;
+
+    // Load current region first
+    var rReg = await api('/ramadan/region');
+    if (rReg.success && rReg.region) {
+        var val = rReg.region.country + ',' + rReg.region.city;
+        var selRegion = document.getElementById('adminRegionSelect');
+        if (selRegion) selRegion.value = val;
+    }
+
     showLoading('Loading users...');
     var r = await api('/admin/users');
     hideLoading();
@@ -629,6 +638,29 @@ async function loadAdmin() {
         var sel = document.getElementById('adminEditUserSelect');
         sel.innerHTML = '<option value="">— Select user —</option>';
         r.users.forEach(function (u) { sel.innerHTML += '<option value="' + u.username + '">' + u.username + '</option>'; });
+    }
+}
+
+async function saveAdminRegion() {
+    var val = document.getElementById('adminRegionSelect').value;
+    if (!val) return;
+    var parts = val.split(',');
+    var country = parts[0];
+    var city = parts[1];
+
+    if (!confirm('This will shift the Ramadan start date for the entire app to ' + country + ' (' + city + '). Proceed?')) return;
+
+    showLoading('Updating Regional Calendar...');
+    var r = await api('/ramadan/region', { method: 'POST', body: { country: country, city: city } });
+    hideLoading();
+
+    if (r.success) {
+        showToast(r.message);
+        // Re-fetch everything to adjust calendar instantly
+        fetchRamadanDates();
+        loadDashboard();
+    } else {
+        showToast(r.error, 'error');
     }
 }
 

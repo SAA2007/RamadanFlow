@@ -327,6 +327,25 @@
 
             <!-- TAB: ADMIN -->
             <div class="tab-content" id="tab-admin">
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🌍 Ramadan Calendar Region</h2>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Select the official region
+                        to track the start of Ramadan for your family. This will automatically adjust the calendar dates
+                        for everyone.</p>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <select id="adminRegionSelect"
+                            style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
+                            <option value="Saudi Arabia,Makkah">🇸🇦 Saudi Arabia (Makkah)</option>
+                            <option value="Pakistan,Islamabad">🇵🇰 Pakistan (Islamabad)</option>
+                            <option value="Azerbaijan,Baku">🇦🇿 Azerbaijan (Baku)</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="saveAdminRegion()">Save Region</button>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
                         <h2>👑 User Management</h2>
