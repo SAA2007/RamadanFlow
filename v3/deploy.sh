@@ -8,8 +8,8 @@ set -e
 # ==========================================
 # CONFIGURATION 
 # ==========================================
-read -p "Enter your DuckDNS Domain (e.g. myramadan.duckdns.org): " DOMAIN
-read -p "Enter your DuckDNS Token (e.g. 94e7...): " DUCKDNS_TOKEN
+read -p "Enter your DuckDNS Domain (e.g. myramadan.duckdns.org): " DOMAIN < /dev/tty
+read -p "Enter your DuckDNS Token (e.g. 94e7...): " DUCKDNS_TOKEN < /dev/tty
 PORT=3000
 APP_DIR="/home/$SUDO_USER/RamadanFlow/v3"
 
