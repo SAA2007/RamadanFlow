@@ -50,81 +50,32 @@ pm2 startup
 
 ---
 
-## 🌐 Remote Access (DuckDNS + HTTPS)
+## 🌐 Remote Access (Domain + Free HTTPS)
 
-If you want to access your Pi securely from anywhere, you can use **DuckDNS** (free dynamic DNS) along with **Cloudflare Tunnel** (or Nginx/Certbot) for SSL.
+If you want to access your Pi securely from anywhere (like `myramadan.duckdns.org`), we created a **Zero-touch Production Deployment** script.
 
-Because you mentioned using a DuckDNS token, here is the easiest way to expose your local `3000` port to a DuckDNS domain using a Cloudflare Tunnel (which provides HTTPS automatically without port forwarding):
+This script will automatically:
 
-### 1. Get your DuckDNS Domain
+1. Install Nginx and Certbot.
+2. Route your local app (port 3000) to port 80 (HTTP) and port 443 (HTTPS).
+3. Secure your domain with a **Free Let's Encrypt SSL Certificate**.
+4. Configure a background job (cronjob) to automatically continuously update your DuckDNS IP address every 5 minutes so it never breaks.
 
-1. Go to [duckdns.org](https://www.duckdns.org/) and log in.
-2. Create a domain (e.g., `myramadan.duckdns.org`).
-3. Take note of your **Token**.
+### How to run it
 
-*Note: Since Cloudflare Tunnels are the most secure way to bypass Router Port Forwarding, we'll map your DuckDNS domain through Cloudflared.*
-
-### 2. Install Cloudflared on Pi
-
-```bash
-# Download for ARM64 (Pi 4 / Pi 5)
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb -o cloudflared.deb
-sudo dpkg -i cloudflared.deb
-
-# Authenticate
-cloudflared tunnel login
-```
-
-### 3. Setup the Tunnel
+1. Open `deploy.sh` and make sure the `DOMAIN` and `DUCKDNS_TOKEN` variables at the very top match your DuckDNS info.
+2. Run this command:
 
 ```bash
-cloudflared tunnel create ramadanflow
+cd ~/RamadanFlow/v3
+chmod +x deploy.sh
 
-# Map your DuckDNS domain to the tunnel
-cloudflared tunnel route dns ramadanflow myramadan.duckdns.org
+# Run as root so it can configure Nginx and SSL
+sudo ./deploy.sh
 ```
 
-### 4. Create Configuration
-
-```bash
-mkdir -p ~/.cloudflared
-nano ~/.cloudflared/config.yml
-```
-
-Paste this inside:
-
-```yaml
-tunnel: ramadanflow
-credentials-file: /home/YOUR_PI_USERNAME/.cloudflared/<TUNNEL_ID>.json
-
-ingress:
-  - hostname: myramadan.duckdns.org
-    service: http://localhost:3000
-  - service: http_status:404
-```
-
-*(Replace `<TUNNEL_ID>` with your tunnel ID and `YOUR_PI_USERNAME` with your Pi username).*
-
-### 5. Run as Service
-
-```bash
-sudo cloudflared service install
-sudo systemctl start cloudflared
-sudo systemctl enable cloudflared
-```
-
-### What if I want pure DuckDNS port forwarding without Cloudflare?
-
-If you'd rather open ports on your router:
-
-1. Port forward port `80` and `443` on your router to your Pi's local IP.
-2. Install the duckdns cronjob to keep your IP updated:
-
-```bash
-echo "*/5 * * * * curl -k 'https://www.duckdns.org/update?domains=YOUR_DOMAIN&token=YOUR_TOKEN&ip=' >/dev/null 2>&1" | crontab -
-```
-
-3. Install Nginx and run Certbot to get a free HTTPS certificate for `myramadan.duckdns.org`.
+**⚠️ CRITICAL FINAL STEP:**
+Because this routes your own domain explicitly to your router's IP, you **must** log into your home WiFi Router settings and add a **Port Forwarding Rule** forwarding `Port 80` and `Port 443` to your Raspberry Pi's local IP address (e.g., `192.168.1.xxx`).
 
 ---
 
