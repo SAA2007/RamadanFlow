@@ -56,7 +56,7 @@ echo "⚙️ Setting up application directory..."
 cd "$APP_DIR" || { echo "❌ Could not find $APP_DIR. Did you clone the repo?"; exit 1; }
 
 # Install dependencies as the regular user to prevent permission issues
-sudo -u "$SUDO_USER" npm install
+sudo -u "$SUDO_USER" npm install || { echo "⚠️ npm install failed, retrying in 5s..."; sleep 5; sudo -u "$SUDO_USER" npm install; } || { echo "⚠️ retrying again..."; sleep 5; sudo -u "$SUDO_USER" npm install; }
 
 # Generate .env if missing
 if [ ! -f .env ]; then
@@ -72,7 +72,7 @@ fi
 # 4. PM2 PROCESS MANAGER
 # ==========================================
 echo "🔄 Configuring PM2..."
-npm install -g pm2
+npm install -g pm2 || { echo "⚠️ pm2 install failed, retrying in 5s..."; sleep 5; npm install -g pm2; } || { echo "⚠️ retrying again..."; sleep 5; npm install -g pm2; }
 
 # Start the app as the standard user
 sudo -u "$SUDO_USER" pm2 start ecosystem.config.js || sudo -u "$SUDO_USER" pm2 restart ecosystem.config.js
