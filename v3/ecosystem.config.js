@@ -2,7 +2,7 @@ module.exports = {
     apps: [{
         name: 'ramadanflow',
         script: 'server.js',
-        cwd: '/home/pi/ramadanflow/v3',
+        cwd: __dirname,
         env: {
             NODE_ENV: 'production',
             PORT: 3000
@@ -11,8 +11,8 @@ module.exports = {
         autorestart: true,
         watch: false,
         max_memory_restart: '150M',
-        log_file: '/home/pi/ramadanflow/logs/app.log',
-        error_file: '/home/pi/ramadanflow/logs/error.log',
+        log_file: __dirname + '/../logs/app.log',
+        error_file: __dirname + '/../logs/error.log',
         time: true
     }]
 };
