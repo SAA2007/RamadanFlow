@@ -11,8 +11,6 @@ module.exports = {
         autorestart: true,
         watch: false,
         max_memory_restart: '150M',
-        log_file: __dirname + '/../logs/app.log',
-        error_file: __dirname + '/../logs/error.log',
         time: true
     }]
 };
