@@ -79,13 +79,18 @@ To get standard HTTPS without adding ports to the URL:
 3. Add a new proxy host pointing `myramadan.duckdns.org` to `localhost:3000` (or your Pi's local IP on port 3000).
 4. Request an SSL certificate directly from inside Nginx Proxy Manager using DNS-01 or HTTP-01 challenges.
 
-### Option C: Native NodeJS HTTPS (Bring Your Own Certs)
+### Option C: Native NodeJS HTTPS (Fully Automated)
 
-If you already have your own SSL certificates (or want to use an automated script like `acme.sh` with a DNS challenge to get DuckDNS certs without opening Port 80), RamadanFlow supports native HTTPS out of the box!
+Because you use CasaOS (which blocks standard HTTP/HTTPS verification), our `deploy.sh` script actually has a built-in fallback using `acme.sh` and the DuckDNS API!
 
-1. Inside the `v3` directory, create a folder named `ssl`.
-2. Place your private key in `v3/ssl/privkey.pem` and your full certificate chain in `v3/ssl/fullchain.pem`.
-3. Restart PM2 (`pm2 restart ramadanflow`). The app will detect the keys and instantly start serving secure `https://` natively on Port 3000!
+By simply running `deploy.sh`, the script automatically:
+
+1. Talks directly to DuckDNS.
+2. Generates a valid Let's Encrypt SSL Certificate.
+3. Saves it locally to the `v3/ssl` folder.
+4. Auto-loads it into the Node.js server.
+
+You can instantly access your app securely at: `https://myramadan.duckdns.org:3000`
 
 ---
 

@@ -87,7 +87,25 @@ sudo -u "$SUDO_USER" pm2 save
 env PATH=$PATH:/usr/bin pm2 startup systemd -u "$SUDO_USER" --hp "/home/$SUDO_USER"
 
 # ==========================================
-# 5. DUCKDNS DYNAMIC IP CRONJOB
+# 5. SSL CERTIFICATE (Native NodeJS via ACME.sh)
+# ==========================================
+echo "🔒 Requesting Free SSL Certificate via DuckDNS API (No Port 80 required)..."
+# Install acme.sh as the user
+sudo -u "$SUDO_USER" bash -c "curl -s https://get.acme.sh | sh -s email=admin@${DOMAIN}" || true
+
+export DuckDNS_Token="$DUCKDNS_TOKEN"
+
+# Issue the certificate using the DNS API plugin for DuckDNS
+sudo -u "$SUDO_USER" bash -c "export DuckDNS_Token=\"$DUCKDNS_TOKEN\"; ~/.acme.sh/acme.sh --issue --dns dns_duckdns -d $DOMAIN --server letsencrypt" || { echo "⚠️ SSL generation failed or already exists."; }
+
+# Install the certificates into the app's ssl directory
+sudo -u "$SUDO_USER" bash -c "~/.acme.sh/acme.sh --install-cert -d $DOMAIN \
+--key-file       $APP_DIR/ssl/privkey.pem  \
+--fullchain-file $APP_DIR/ssl/fullchain.pem \
+--reloadcmd     \"pm2 restart ramadanflow\"" || { echo "⚠️ SSL installation skipped."; }
+
+# ==========================================
+# 6. DUCKDNS DYNAMIC IP CRONJOB
 # ==========================================
 echo "🦆 Configuring DuckDNS auto-updater..."
 CRON_CMD="*/5 * * * * curl -s -k 'https://www.duckdns.org/update?domains=${DOMAIN%%.duckdns.org}&token=$DUCKDNS_TOKEN&ip=' >/dev/null 2>&1"
