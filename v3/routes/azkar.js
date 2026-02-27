@@ -6,27 +6,21 @@ const router = express.Router();
 // POST /api/azkar/log
 router.post('/log', (req, res) => {
     try {
-        const { date, type } = req.body;
+        const { date, morning, evening } = req.body;
         const username = req.user.username; // from JWT
-        if (!date || !type) return res.json({ success: false, error: 'Missing fields.' });
-        if (type !== 'morning' && type !== 'evening') return res.json({ success: false, error: 'Type must be morning or evening.' });
+        if (!date) return res.json({ success: false, error: 'Missing date field.' });
+
+        const mVal = morning ? 1 : 0;
+        const eVal = evening ? 1 : 0;
 
         const existing = db.prepare('SELECT * FROM azkar WHERE username = ? AND date = ?').get(username, date);
 
         if (existing) {
-            const current = type === 'morning' ? existing.morning : existing.evening;
-            const newVal = current ? 0 : 1;
-            if (type === 'morning') {
-                db.prepare('UPDATE azkar SET morning = ? WHERE username = ? AND date = ?').run(newVal, username, date);
-            } else {
-                db.prepare('UPDATE azkar SET evening = ? WHERE username = ? AND date = ?').run(newVal, username, date);
-            }
-            res.json({ success: true, message: type + (newVal ? ' ✅' : ' removed') });
+            db.prepare('UPDATE azkar SET morning = ?, evening = ? WHERE username = ? AND date = ?').run(mVal, eVal, username, date);
+            res.json({ success: true, message: 'Azkar Updated ✅' });
         } else {
-            const morning = type === 'morning' ? 1 : 0;
-            const evening = type === 'evening' ? 1 : 0;
-            db.prepare('INSERT INTO azkar (username, date, morning, evening) VALUES (?, ?, ?, ?)').run(username, date, morning, evening);
-            res.json({ success: true, message: type + ' ✅' });
+            db.prepare('INSERT INTO azkar (username, date, morning, evening) VALUES (?, ?, ?, ?)').run(username, date, mVal, eVal);
+            res.json({ success: true, message: 'Azkar Logged ✅' });
         }
     } catch (err) {
         console.error('Azkar log error:', err);

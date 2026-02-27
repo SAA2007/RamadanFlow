@@ -486,6 +486,23 @@ function loadStats() {
 
 let taraweehChartInstance = null;
 let scoreChartInstance = null;
+
+const BADGE_DEFS = [
+    { emoji: '🔥', name: 'First Streak', desc: '3+ day streak', check: function (s) { return s.streak >= 3; } },
+    { emoji: '⭐', name: 'Week Warrior', desc: '7+ day streak', check: function (s) { return s.streak >= 7; } },
+    { emoji: '🏆', name: 'Iron Forged', desc: '30+ day streak', check: function (s) { return s.streak >= 30; } },
+    { emoji: '📖', name: 'Hafiz Journey', desc: '1 Khatam done', check: function (s) { return s.completedKhatams >= 1; } },
+    { emoji: '🌟', name: 'Quran Master', desc: '10+ Khatams', hidden: true, check: function (s) { return s.completedKhatams >= 10; } },
+    { emoji: '🍽️', name: 'Fasting Warrior', desc: '15+ days fasted', check: function (s) { return s.fastingCount >= 15; } },
+    { emoji: '🌙', name: 'Full Ramadan', desc: '29+ days fasted', check: function (s) { return s.fastingCount >= 29; } },
+    { emoji: '🚀', name: 'Getting Started', desc: 'Logged first Taraweeh', check: function (s) { return s.taraweehCount >= 1; } },
+    { emoji: '🤲', name: 'Dhikr Master', desc: '14+ posts of Azkar', check: function (s) { return s.azkarCount >= 14; } },
+    { emoji: '🕌', name: 'Mosque Pillar', desc: '25+ Daily prayers', check: function (s) { return s.namazCount >= 25; } },
+    { emoji: '🕋', name: 'Prayer Champion', desc: '150+ Daily prayers', hidden: true, check: function (s) { return s.namazCount >= 150; } },
+    { emoji: '🦅', name: 'Night Owl', desc: '100+ total Taraweeh rakaat', hidden: true, check: function (s) { return s.taraweehRakaat >= 100; } },
+    { emoji: '🥈', name: 'Silver Medal', desc: 'Score over 500', hidden: true, check: function (s) { return s.score >= 500; } },
+    { emoji: '👑', name: 'Iron Man', desc: 'Score over 1000', hidden: true, check: function (s) { return s.score >= 1000; } }
+];
 function renderCharts() {
     var data = APP.dashboardData.summaries;
     if (!data || data.length === 0) return;
@@ -516,10 +533,11 @@ function renderCharts() {
 
 function renderLeaderboard() {
     var data = APP.dashboardData.summaries;
-    var html = '<table class="family-table"><thead><tr><th>#</th><th>Name</th><th>🕌</th><th>🔥</th><th>📖</th><th>🍽️</th><th>Score</th></tr></thead><tbody>';
+    var html = '<table class="family-table"><thead><tr><th>#</th><th>Name</th><th>🏅</th><th>🕌</th><th>🔥</th><th>📖</th><th>🍽️</th><th>Score</th></tr></thead><tbody>';
     data.forEach(function (s, i) {
+        var medalsCount = BADGE_DEFS.filter(function (b) { return b.check(s); }).length;
         var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-        html += '<tr><td class="rank">' + medal + '</td><td>' + s.username + '</td><td>' + s.taraweehCount + '</td><td>' + s.streak + '</td><td>' + s.totalParas + '</td><td>' + s.fastingCount + '</td><td style="color:var(--gold);font-weight:700">' + s.score + '</td></tr>';
+        html += '<tr><td class="rank">' + medal + '</td><td>' + s.username + '</td><td>' + medalsCount + '</td><td>' + s.taraweehCount + '</td><td>' + s.streak + '</td><td>' + s.totalParas + '</td><td>' + s.fastingCount + '</td><td style="color:var(--gold);font-weight:700">' + s.score + '</td></tr>';
     });
     html += '</tbody></table>';
     document.getElementById('leaderboardTable').innerHTML = html;
@@ -528,29 +546,29 @@ function renderLeaderboard() {
 function renderBadges() {
     if (!APP.dashboardData) return;
     var summaries = APP.dashboardData.summaries;
-    var badgeDefs = [
-        { emoji: '🔥', name: 'First Streak', desc: '3+ day streak', check: function (s) { return s.streak >= 3; } },
-        { emoji: '⭐', name: 'Week Warrior', desc: '7+ day streak', check: function (s) { return s.streak >= 7; } },
-        { emoji: '📖', name: 'Hafiz Journey', desc: '1 Khatam done', check: function (s) { return s.completedKhatams >= 1; } },
-        { emoji: '🍽️', name: 'Fasting Warrior', desc: '15+ days fasted', check: function (s) { return s.fastingCount >= 15; } },
-        { emoji: '🌙', name: 'Full Ramadan', desc: '29+ days fasted', check: function (s) { return s.fastingCount >= 29; } },
-        { emoji: '🚀', name: 'Getting Started', desc: 'Logged first Taraweeh', check: function (s) { return s.taraweehCount >= 1; } },
-        { emoji: '🤲', name: 'Dhikr Master', desc: '14+ posts of Azkar', check: function (s) { return s.azkarCount >= 14; } },
-        { emoji: '🕌', name: 'Mosque Pillar', desc: '25+ Daily prayers', check: function (s) { return s.namazCount >= 25; } },
-        { emoji: '🦅', name: 'Night Owl', desc: '100+ total Taraweeh rakaat', hidden: true, check: function (s) { return s.taraweehRakaat >= 100; } },
-        { emoji: '👑', name: 'Iron Man', desc: 'Score over 1000', hidden: true, check: function (s) { return s.score >= 1000; } }
-    ];
 
     var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
-    badgeDefs.forEach(function (def) {
+    BADGE_DEFS.forEach(function (def) {
         var earners = summaries.filter(function (s) { return def.check(s); }).map(function (s) { return s.username; });
         var earned = earners.length > 0;
-        if (def.hidden && !earned) return; // Hide hidden badges if nobody earned them yet
 
-        html += '<div style="background:' + (earned ? 'rgba(201,168,76,0.1)' : 'var(--bg-secondary)') + ';border:1px solid ' + (earned ? 'var(--gold)' : 'var(--border-color)') + ';border-radius:var(--radius-sm);padding:16px;text-align:center;opacity:' + (earned ? '1' : '0.5') + '">';
-        html += '<div style="font-size:32px;margin-bottom:8px">' + def.emoji + '</div>';
-        html += '<div style="font-weight:600;font-size:14px">' + def.name + '</div>';
-        html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' + def.desc + '</div>';
+        var displayEmoji = def.emoji;
+        var displayName = def.name;
+        var displayDesc = def.desc;
+        var opacity = earned ? '1' : '0.5';
+
+        if (def.hidden && !earned) {
+            // Veiled badge logic: show it, but conceal identity
+            displayEmoji = '❓';
+            displayName = '???';
+            displayDesc = 'Secret achievement';
+            opacity = '0.3';
+        }
+
+        html += '<div style="background:' + (earned ? 'rgba(201,168,76,0.1)' : 'var(--bg-secondary)') + ';border:1px solid ' + (earned ? 'var(--gold)' : 'var(--border-color)') + ';border-radius:var(--radius-sm);padding:16px;text-align:center;opacity:' + opacity + '">';
+        html += '<div style="font-size:32px;margin-bottom:8px">' + displayEmoji + '</div>';
+        html += '<div style="font-weight:600;font-size:14px">' + displayName + '</div>';
+        html += '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">' + displayDesc + '</div>';
         if (earned) html += '<div style="font-size:11px;color:var(--gold)">' + earners.join(', ') + '</div>';
         else html += '<div style="font-size:11px;color:var(--text-muted)">Unearned</div>';
         html += '</div>';
@@ -775,13 +793,24 @@ function prevAzkarMonth() { APP.azkarCalMonth--; if (APP.azkarCalMonth < 0) { AP
 function nextAzkarMonth() { APP.azkarCalMonth++; if (APP.azkarCalMonth > 11) { APP.azkarCalMonth = 0; APP.azkarCalYear++; } renderAzkarCalendar(); }
 
 async function openAzkarDay(dateStr) {
-    var type = 'morning';
     var entry = APP.azkarData[dateStr] || {};
-    if (entry.morning && !entry.evening) type = 'evening';
-    else if (entry.morning && entry.evening) type = 'morning'; // will toggle off
+    var m = !!entry.morning;
+    var e = !!entry.evening;
 
-    var r = await api('/azkar/log', { method: 'POST', body: { date: dateStr, type: type } });
-    if (r.success) { showToast(r.message); loadAzkar(); }
+    var newM = 0;
+    var newE = 0;
+
+    // Tri-State Cycle: Empty (0,0) -> Moon (1,0) -> Moon+Sun (1,1) -> Empty (0,0)
+    if (!m && !e) { newM = 1; newE = 0; }
+    else if (m && !e) { newM = 1; newE = 1; }
+    else { newM = 0; newE = 0; }
+
+    var r = await api('/azkar/log', { method: 'POST', body: { date: dateStr, morning: newM, evening: newE } });
+    if (r.success) {
+        if (newM === 0 && newE === 0) showToast("Removed ✅");
+        else showToast(r.message);
+        loadAzkar();
+    }
 }
 
 // ===================================================================
