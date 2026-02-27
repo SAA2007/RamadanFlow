@@ -25,6 +25,9 @@ fi
 echo "📦 Installing npm dependencies..."
 npm install
 
+# 2.5 Create SSL folder
+mkdir -p ssl
+
 # 3. Create .env if it doesn't exist
 if [ ! -f .env ]; then
     echo "🔑 Generating secure .env file..."

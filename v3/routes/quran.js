@@ -84,4 +84,25 @@ router.post('/toggle-para', (req, res) => {
     }
 });
 
+// POST /api/quran/delete
+router.post('/delete', (req, res) => {
+    try {
+        const { khatamId } = req.body;
+        const username = req.user.username;
+
+        // Verify ownership
+        const khatam = db.prepare('SELECT * FROM khatams WHERE id = ? AND username = ?').get(khatamId, username);
+        if (!khatam) return res.json({ success: false, error: 'Khatam not found or unauthorized.' });
+
+        // Delete associated progress first, then the khatam itself
+        db.prepare('DELETE FROM quran_progress WHERE khatam_id = ?').run(khatamId);
+        db.prepare('DELETE FROM khatams WHERE id = ?').run(khatamId);
+
+        res.json({ success: true, message: 'Khatam deleted successfully.' });
+    } catch (err) {
+        console.error('Delete khatam error:', err);
+        res.json({ success: false, error: 'Failed to delete khatam.' });
+    }
+});
+
 module.exports = router;

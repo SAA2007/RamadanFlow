@@ -394,7 +394,7 @@ function renderKhatams() {
         var isComplete = kh.paraCount >= 30;
         var pct = Math.round((kh.paraCount / 30) * 100);
         var typeIcon = kh.type === 'Arabic' ? '🕋' : '🌍';
-        html += '<div class="card" style="margin-bottom:16px"><div class="card-header"><h2>' + typeIcon + ' ' + kh.type + ' Khatam</h2><span style="font-size:13px;color:var(--text-secondary)">' + kh.paraCount + '/30 paras · ' + pct + '%' + (isComplete ? ' ✅ Complete!' : '') + '</span></div>';
+        html += '<div class="card" style="margin-bottom:16px"><div class="card-header"><div style="display:flex;align-items:center;gap:8px"><h2>' + typeIcon + ' ' + kh.type + ' Khatam</h2><span style="cursor:pointer;opacity:0.5;font-size:12px" title="Delete Khatam" onclick="deleteKhatam(\'' + kh.id + '\')">🗑️</span></div><span style="font-size:13px;color:var(--text-secondary)">' + kh.paraCount + '/30 paras · ' + pct + '%' + (isComplete ? ' ✅ Complete!' : '') + '</span></div>';
         html += '<div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>';
         html += '<div class="quran-grid">';
         for (var p = 1; p <= 30; p++) {
@@ -407,8 +407,17 @@ function renderKhatams() {
 }
 
 async function startNewKhatam(type) {
-    showLoading('Starting...');
+    showLoading('Starting Khatam...');
     var r = await api('/quran/create', { method: 'POST', body: { type: type } });
+    hideLoading();
+    if (r.success) { showToast(r.message); loadQuran(); refreshDashboard(); }
+    else showToast(r.error, 'error');
+}
+
+async function deleteKhatam(khatamId) {
+    if (!confirm("Are you sure you want to delete this Khatam entirely? All checked paras will be lost.")) return;
+    showLoading('Deleting...');
+    var r = await api('/quran/delete', { method: 'POST', body: { khatamId: khatamId } });
     hideLoading();
     if (r.success) { showToast(r.message); loadQuran(); refreshDashboard(); }
     else showToast(r.error, 'error');

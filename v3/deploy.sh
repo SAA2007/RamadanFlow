@@ -60,6 +60,9 @@ cd "$APP_DIR" || { echo "❌ Could not find $APP_DIR. Did you clone the repo?"; 
 # Install dependencies as the regular user to prevent permission issues
 sudo -u "$SUDO_USER" npm install || { echo "⚠️ npm install failed, retrying in 5s..."; sleep 5; sudo -u "$SUDO_USER" npm install; } || { echo "⚠️ retrying again..."; sleep 5; sudo -u "$SUDO_USER" npm install; }
 
+# Create SSL folder for Native HTTPS (Option C)
+sudo -u "$SUDO_USER" mkdir -p ssl
+
 # Generate .env if missing
 if [ ! -f .env ]; then
     echo "🔑 Generating secure .env file..."
