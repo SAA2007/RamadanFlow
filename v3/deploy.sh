@@ -36,7 +36,16 @@ echo "======================================"
 # ==========================================
 echo "📦 Updating system packages..."
 apt update && apt upgrade -y
+
+# Stop any pre-existing web servers that might hog port 80 (common on Pi)
+echo "🛑 Checking for conflicting web servers (apache2/lighttpd)..."
+systemctl stop apache2 2>/dev/null || true
+systemctl disable apache2 2>/dev/null || true
+systemctl stop lighttpd 2>/dev/null || true
+systemctl disable lighttpd 2>/dev/null || true
+
 apt install -y curl wget git nano cron nginx certbot python3-certbot-nginx build-essential
+
 
 # ==========================================
 # 2. NODE.JS & NPM INSTALLATION (Global)
