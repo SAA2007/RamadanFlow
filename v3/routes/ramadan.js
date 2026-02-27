@@ -60,11 +60,11 @@ router.get('/all-regions/:year', async (req, res) => {
                 let ramadanStart = null;
                 for (let m = 1; m <= 12; m++) {
                     const days = json.data[m.toString()];
-                    if (days) {
-                        const firstDay = days.find(d => d.hijri.month.number === 9);
+                    if (days && Array.isArray(days)) {
+                        const firstDay = days.find(d => d.hijri && d.hijri.month && d.hijri.month.number === 9);
                         if (firstDay) {
-                            const dateParts = firstDay.gregorian.date.split('-');
-                            ramadanStart = dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0];
+                            const dateParts = firstDay.gregorian.date.split('-'); // typically DD-MM-YYYY
+                            ramadanStart = dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0]; // convert to YYYY-MM-DD
                             break;
                         }
                     }
