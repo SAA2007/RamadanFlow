@@ -36,19 +36,8 @@ echo "======================================"
 # ==========================================
 echo "📦 Updating system packages..."
 apt update && apt upgrade -y
+apt install -y curl wget git nano cron build-essential
 
-# Stop any pre-existing web servers that might hog port 80 (common on Pi)
-echo "🛑 Checking for conflicting web servers (apache2/lighttpd)..."
-systemctl stop apache2 2>/dev/null || true
-systemctl disable apache2 2>/dev/null || true
-systemctl stop lighttpd 2>/dev/null || true
-systemctl disable lighttpd 2>/dev/null || true
-
-apt install -y curl wget git nano cron nginx certbot python3-certbot-nginx build-essential psmisc lsof
-
-# Forcibly free ports
-fuser -k 80/tcp 2>/dev/null || true
-fuser -k 443/tcp 2>/dev/null || true
 
 
 # ==========================================
@@ -103,52 +92,18 @@ CRON_CMD="*/5 * * * * curl -s -k 'https://www.duckdns.org/update?domains=${DOMAI
 # Trigger an immediate update
 curl -s -k "https://www.duckdns.org/update?domains=${DOMAIN%%.duckdns.org}&token=$DUCKDNS_TOKEN&ip=" >/dev/null 2>&1
 
-# ==========================================
-# 6. NGINX REVERSE PROXY
-# ==========================================
-echo "🌐 Configuring Nginx for $DOMAIN..."
-NGINX_CONF="/etc/nginx/sites-available/ramadanflow"
-
-cat > "$NGINX_CONF" << EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-
-    location / {
-        proxy_pass http://127.0.0.1:$PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-EOF
-
-# Enable the site and restart Nginx
-ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-nginx -t
-systemctl restart nginx || { echo "❌ Nginx failed to start! Printing logs:"; journalctl -xeu nginx.service --no-pager | tail -n 30; exit 1; }
-
-# ==========================================
-# 7. SSL CERTIFICATE (CERTBOT)
-# ==========================================
-echo "🔒 Securing site with Let's Encrypt Free SSL..."
-# Wait a moment for DuckDNS to propagate
-sleep 5
-certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email || echo "⚠️ Certbot challenge failed. Make sure port 80/443 are forwarded on your router to this Pi!"
-
 echo "======================================"
 echo "🎉 DEPLOYMENT COMPLETE!"
 echo ""
-echo "RamadanFlow is running securely at:"
-echo "👉 https://$DOMAIN"
+echo "RamadanFlow is running securely on your Pi at:"
+echo "👉 http://localhost:$PORT"
 echo ""
-echo "CRITICAL FINAL STEP:"
-echo "If you haven't already, you must log into your WiFi Router settings"
-echo "and 'Port Forward' Port 80 and Port 443 to this Raspberry Pi's local IP address."
+echo "To access it remotely via DuckDNS ($DOMAIN):"
+echo "1. Log into your WiFi Router."
+echo "2. Port Forward an external 'non-descript' port (e.g., 8443 or 5050)"
+echo "   to your Raspberry Pi's local IP address on Port $PORT."
+echo ""
+echo "Example: You can then access it at http://$DOMAIN:8443"
+echo "Note: If you run CasaOS, use the 'Cloudflared' or 'Nginx Proxy Manager'"
+echo "CasaOS App to route this port natively."
 echo "======================================"

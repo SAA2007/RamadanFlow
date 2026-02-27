@@ -50,32 +50,34 @@ pm2 startup
 
 ---
 
-## 🌐 Remote Access (Domain + Free HTTPS)
+## 🌐 Remote Access (Domain + CasaOS Setup)
 
-If you want to access your Pi securely from anywhere (like `myramadan.duckdns.org`), we created a **Zero-touch Production Deployment** script.
-
-This script will automatically:
-
-1. Install Nginx and Certbot.
-2. Route your local app (port 3000) to port 80 (HTTP) and port 443 (HTTPS).
-3. Secure your domain with a **Free Let's Encrypt SSL Certificate**.
-4. Configure a background job (cronjob) to automatically continuously update your DuckDNS IP address every 5 minutes so it never breaks.
-
-### How to run it
-
-1. Open `deploy.sh` and make sure the `DOMAIN` and `DUCKDNS_TOKEN` variables at the very top match your DuckDNS info.
-2. Run this command:
+If you want to access your Pi securely from anywhere (like `myramadan.duckdns.org`), run our automated deployment script:
 
 ```bash
 cd ~/RamadanFlow/v3
 chmod +x deploy.sh
-
-# Run as root so it can configure Nginx and SSL
 sudo ./deploy.sh
 ```
 
-**⚠️ CRITICAL FINAL STEP:**
-Because this routes your own domain explicitly to your router's IP, you **must** log into your home WiFi Router settings and add a **Port Forwarding Rule** forwarding `Port 80` and `Port 443` to your Raspberry Pi's local IP address (e.g., `192.168.1.xxx`).
+This script will automatically install Node, configure PM2, and set up a DuckDNS **background ping** to keep your dynamic IP updated.
+
+Because you have **CasaOS** running on port 80, the script will **NOT** attempt to install Nginx or override port 80. Instead, it will start RamadanFlow safely on `localhost:3000`.
+
+### Option A: Use a Non-Descript Port (Fastest)
+
+1. Log into your home WiFi Router settings.
+2. Add a **Port Forwarding Rule** forwarding an external 'non-descript' port (e.g., `8085` or `8443`) to your Raspberry Pi's local IP address on **Port 3000**.
+3. Access your app anywhere via `http://myramadan.duckdns.org:8085`.
+
+### Option B: Route natively through CasaOS (Best for HTTPS)
+
+To get standard HTTPS without adding ports to the URL:
+
+1. Open your CasaOS Dashboard.
+2. Go to the App Store and install **Nginx Proxy Manager** or **Cloudflared**.
+3. Add a new proxy host pointing `myramadan.duckdns.org` to `localhost:3000` (or your Pi's local IP on port 3000).
+4. Request an SSL certificate directly from inside Nginx Proxy Manager using DNS-01 or HTTP-01 challenges.
 
 ---
 
