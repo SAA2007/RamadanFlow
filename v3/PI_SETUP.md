@@ -40,13 +40,13 @@ pm2 logs           # View server logs
 
 ### Making it survive a reboot
 
-If you restart your Raspberry Pi, the app won't turn on automatically unless you run this command:
+The `setup.sh` script automatically attempts to configure PM2 to start on boot. However, if it fails (for instance, if you didn't have `sudo` permissions), you can manually run:
 
 ```bash
 pm2 startup
 ```
 
-*Note: This command will output another command that looks like `sudo env PATH=$PATH...`. You MUST copy and paste that command into your terminal and hit enter.*
+*Note: If you run this manually, it will output another command that looks like `sudo env PATH=$PATH...`. You MUST copy and paste that command into your terminal and hit enter.*
 
 ---
 

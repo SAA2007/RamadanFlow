@@ -53,13 +53,19 @@ pm2 start ecosystem.config.js || pm2 restart ecosystem.config.js
 # 6. Save PM2 state
 pm2 save
 
+# 7. Configure PM2 to start on boot automatically
+echo "⚙️ Configuring PM2 to start on boot..."
+PM2_STARTUP_CMD=$(pm2 startup | tail -n 1)
+if [[ "$PM2_STARTUP_CMD" == *"sudo env PATH"* ]]; then
+    echo "Running PM2 startup script automatically..."
+    eval "$PM2_STARTUP_CMD"
+else
+    echo "Could not auto-configure startup. Try running: pm2 startup"
+fi
+
 echo ""
 echo "======================================"
 echo "✅ Setup Complete!"
 echo "RamadanFlow is now running in the background."
 echo "URL: http://localhost:3000 (or your Pi's IP address)"
-echo ""
-echo "If you want PM2 to auto-start on Pi reboot, run:"
-echo "  pm2 startup"
-echo "(And then copy/paste the command it gives you, which will require sudo)"
 echo "======================================"

@@ -84,6 +84,8 @@ sudo -u "$SUDO_USER" pm2 start ecosystem.config.js || sudo -u "$SUDO_USER" pm2 r
 sudo -u "$SUDO_USER" pm2 save
 
 # Setup PM2 to start on boot
+echo "⚙️ Rebuilding PM2 startup script..."
+pm2 unstartup systemd || true
 env PATH=$PATH:/usr/bin pm2 startup systemd -u "$SUDO_USER" --hp "/home/$SUDO_USER"
 
 # ==========================================
@@ -108,10 +110,26 @@ sudo -u "$SUDO_USER" bash -c "~/.acme.sh/acme.sh --install-cert -d $DOMAIN \
 # 6. DUCKDNS DYNAMIC IP CRONJOB
 # ==========================================
 echo "🦆 Configuring DuckDNS auto-updater..."
-CRON_CMD="*/5 * * * * curl -s -k 'https://www.duckdns.org/update?domains=${DOMAIN%%.duckdns.org}&token=$DUCKDNS_TOKEN&ip=' >/dev/null 2>&1"
-(crontab -u "$SUDO_USER" -l 2>/dev/null | grep -v "duckdns.org"; echo "$CRON_CMD") | crontab -u "$SUDO_USER" -
+
+# Create a manual executable script for DuckDNS
+cat << 'EOF' > "$APP_DIR/update_duckdns.sh"
+#!/bin/bash
+DOMAIN="REPLACE_DOMAIN"
+TOKEN="REPLACE_TOKEN"
+echo "Sending IP update request to DuckDNS..."
+curl -s -k "https://www.duckdns.org/update?domains=${DOMAIN}&token=${TOKEN}&ip="
+echo ""
+EOF
+sudo -u "$SUDO_USER" bash -c "sed -i 's/REPLACE_DOMAIN/${DOMAIN%%.duckdns.org}/g' '$APP_DIR/update_duckdns.sh'"
+sudo -u "$SUDO_USER" bash -c "sed -i 's/REPLACE_TOKEN/$DUCKDNS_TOKEN/g' '$APP_DIR/update_duckdns.sh'"
+chmod +x "$APP_DIR/update_duckdns.sh"
+
+CRON_CMD="*/5 * * * * $APP_DIR/update_duckdns.sh >/tmp/duckdns.log 2>&1"
+CRON_BOOT="@reboot sleep 60 && $APP_DIR/update_duckdns.sh >/tmp/duckdns.log 2>&1"
+(crontab -u "$SUDO_USER" -l 2>/dev/null | grep -v "update_duckdns.sh"; echo "$CRON_CMD"; echo "$CRON_BOOT") | crontab -u "$SUDO_USER" -
+
 # Trigger an immediate update
-curl -s -k "https://www.duckdns.org/update?domains=${DOMAIN%%.duckdns.org}&token=$DUCKDNS_TOKEN&ip=" >/dev/null 2>&1
+sudo -u "$SUDO_USER" "$APP_DIR/update_duckdns.sh" >/dev/null 2>&1
 
 echo "======================================"
 echo "🎉 DEPLOYMENT COMPLETE!"
