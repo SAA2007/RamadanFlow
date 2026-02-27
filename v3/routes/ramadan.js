@@ -61,9 +61,9 @@ router.get('/all-regions/:year', async (req, res) => {
                 for (let m = 1; m <= 12; m++) {
                     const days = json.data[m.toString()];
                     if (days && Array.isArray(days)) {
-                        const firstDay = days.find(d => d.hijri && d.hijri.month && d.hijri.month.number === 9);
+                        const firstDay = days.find(d => d.date && d.date.hijri && d.date.hijri.month && d.date.hijri.month.number === 9);
                         if (firstDay) {
-                            const dateParts = firstDay.gregorian.date.split('-'); // typically DD-MM-YYYY
+                            const dateParts = firstDay.date.gregorian.date.split('-'); // typically DD-MM-YYYY
                             ramadanStart = dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0]; // convert to YYYY-MM-DD
                             break;
                         }
@@ -119,11 +119,11 @@ router.get('/:year', async (req, res) => {
 
             for (let m = 1; m <= 12; m++) {
                 const days = json.data[m.toString()];
-                if (days) {
+                if (days && Array.isArray(days)) {
                     for (const d of days) {
-                        if (d.hijri.month.number === 9) {
-                            if (!startDay) startDay = d.gregorian.date;
-                            endDay = d.gregorian.date;
+                        if (d.date && d.date.hijri && d.date.hijri.month.number === 9) {
+                            if (!startDay) startDay = d.date.gregorian.date;
+                            endDay = d.date.gregorian.date;
                         }
                     }
                 }
