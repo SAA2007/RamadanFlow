@@ -104,10 +104,34 @@ app.get('*', function (req, res) {
 // START SERVER
 // ===================================================================
 
-app.listen(PORT, () => {
+const http = require('http');
+const https = require('https');
+
+let server;
+const sslPath = path.join(__dirname, 'ssl');
+const keyPath = path.join(sslPath, 'privkey.pem');
+const certPath = path.join(sslPath, 'fullchain.pem');
+
+if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    const options = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath)
+    };
+    server = https.createServer(options, app);
     console.log('');
-    console.log('  🕌 RamadanFlow v3.1 is running!');
+    console.log('  🔒 SSL Certificates found in /ssl');
+    console.log('  🕌 RamadanFlow v3.4 is running in HTTPS mode!');
+    console.log('  ─────────────────────────────────');
+    console.log(`  URL:  https://localhost:${PORT}`);
+    console.log('');
+} else {
+    server = http.createServer(app);
+    console.log('');
+    console.log('  ⚠️  No SSL certs in /ssl. Starting HTTP mode.');
+    console.log('  🕌 RamadanFlow v3.4 is running!');
     console.log('  ─────────────────────────────────');
     console.log(`  URL:  http://localhost:${PORT}`);
     console.log('');
-});
+}
+
+server.listen(PORT);

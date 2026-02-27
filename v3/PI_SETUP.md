@@ -70,22 +70,22 @@ Because you have **CasaOS** running on port 80, the script will **NOT** attempt 
 2. Add a **Port Forwarding Rule** forwarding an external 'non-descript' port (e.g., `8085` or `8443`) to your Raspberry Pi's local IP address on **Port 3000**.
 3. Access your app anywhere via `http://myramadan.duckdns.org:8085`.
 
-### Option B: Route natively through CasaOS (Best for HTTPS)
+### Option B: Route natively through CasaOS (Best for Standard Nginx HTTPS)
 
 To get standard HTTPS without adding ports to the URL:
 
-> [!WARNING]
-> **CasaOS Port Conflict**
-> Nginx Proxy Manager occupies ports 80 and 443 by default for built-in Nginx use, and port 81 for the admin page.
-> **Before installing**, you MUST change your CasaOS WebUI port (in CasaOS settings) to something other than 80/81/443 (e.g., `8080` or `90`). Otherwise, installing NPM will fail or cause CasaOS to run abnormally!
-
 1. Open your CasaOS Dashboard.
 2. Go to the App Store and install **Nginx Proxy Manager** or **Cloudflared**.
-3. *If using Nginx Proxy Manager*, log into the admin panel (Port `81`).
-   - Default Username: `admin@example.com`
-   - Default Password: `changeme`
-4. Add a new proxy host pointing `myramadan.duckdns.org` to `localhost:3000` (or your Pi's local IP on port 3000).
-5. Go to the SSL tab and request a new certificate to enable HTTPS.
+3. Add a new proxy host pointing `myramadan.duckdns.org` to `localhost:3000` (or your Pi's local IP on port 3000).
+4. Request an SSL certificate directly from inside Nginx Proxy Manager using DNS-01 or HTTP-01 challenges.
+
+### Option C: Native NodeJS HTTPS (Bring Your Own Certs)
+
+If you already have your own SSL certificates (or want to use an automated script like `acme.sh` with a DNS challenge to get DuckDNS certs without opening Port 80), RamadanFlow supports native HTTPS out of the box!
+
+1. Inside the `v3` directory, create a folder named `ssl`.
+2. Place your private key in `v3/ssl/privkey.pem` and your full certificate chain in `v3/ssl/fullchain.pem`.
+3. Restart PM2 (`pm2 restart ramadanflow`). The app will detect the keys and instantly start serving secure `https://` natively on Port 3000!
 
 ---
 
