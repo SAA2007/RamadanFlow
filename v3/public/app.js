@@ -82,10 +82,14 @@ async function handleLogin(e) {
         APP.username = result.username;
         APP.role = result.role;
         APP.email = result.email;
-        localStorage.setItem('token', result.token);
-        localStorage.setItem('username', result.username);
-        localStorage.setItem('role', result.role);
-        localStorage.setItem('email', result.email);
+        APP.gender = result.gender; // Added
+        APP.age = result.age;       // Added
+        localStorage.setItem('rf_token', result.token);
+        localStorage.setItem('rf_username', result.username);
+        localStorage.setItem('rf_role', result.role);
+        localStorage.setItem('rf_email', result.email);
+        localStorage.setItem('rf_gender', result.gender); // Added
+        localStorage.setItem('rf_age', result.age);       // Added
         initDashboard();
     } else {
         showLoginAlert(result.error, 'error');
@@ -108,17 +112,19 @@ async function handleRegister(e) {
     e.preventDefault();
     var username = document.getElementById('regUsername').value.trim();
     var email = document.getElementById('regEmail').value.trim();
-    var pw = document.getElementById('regPassword').value;
-    var cpw = document.getElementById('regConfirmPassword').value;
-    var btn = document.getElementById('registerBtn');
+    var password = document.getElementById('regPassword').value;
+    var confirm = document.getElementById('regConfirmPassword').value;
+    var gender = document.getElementById('regGender').value;
+    var age = document.getElementById('regAge').value;
+    var btn = document.getElementById('registerBtn'); // Moved btn declaration here
 
-    if (pw !== cpw) { showRegisterAlert('Passwords do not match.', 'error'); return; }
-    if (pw.length < 4) { showRegisterAlert('Password must be at least 4 characters.', 'error'); return; }
+    if (password !== confirm) { showRegisterAlert('Passwords do not match.', 'error'); return; }
+    if (password.length < 4) { showRegisterAlert('Password must be at least 4 characters.', 'error'); return; }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Creating account...';
 
-    var result = await api('/auth/register', { method: 'POST', body: { username, email, password: pw } });
+    var result = await api('/auth/register', { method: 'POST', body: { username: username, email: email, password: password, gender: gender, age: age } });
     if (result.success) {
         showRegisterAlert(result.message, 'success');
         setTimeout(function () { goToPage('Login'); }, 1500);
@@ -271,6 +277,9 @@ async function loadMultiRegionTracker() {
     var el = document.getElementById('multiRegionTracker');
     if (!el) return;
 
+    document.getElementById('ksaStart').textContent = '';
+    document.getElementById('pakStart').textContent = '';
+    document.getElementById('azStart').textContent = '';
     el.style.display = 'block';
 
     var result = await api('/ramadan/all-regions/' + APP.year);
@@ -368,7 +377,8 @@ function renderTaraweehCalendar() {
         if (isToday) classes += ' today';
         if (isFuture) classes += ' future';
         if (entry && entry.completed) classes += ' completed';
-        if (isRamadanDay(ds)) classes += ' ramadan';
+        var isRamadan = isRamadanDay(ds);
+        if (isRamadan) classes += ' ramadan';
 
         var regionText = '';
         if (APP.regionStarts) {
@@ -377,7 +387,8 @@ function renderTaraweehCalendar() {
             if (APP.regionStarts.az === ds) regionText += '<div class="region-start-dot az-badge">🇦🇿 AZ</div>';
         }
         var rb = (entry && entry.completed && entry.rakaat) ? '<span class="rakaat-badge">' + entry.rakaat + 'r</span>' : '';
-        var oc = isFuture ? '' : ' onclick="openTaraweehModal(\'' + ds + '\')"';
+        // Only allow clicking if NOT in future AND within Ramadan timeframe
+        var oc = (isFuture || !isRamadan) ? '' : ' onclick="openTaraweehModal(\'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><div class="calendar-dots">' + regionText + '</div>' + rb + '</div>';
     }
     container.innerHTML = html;
@@ -510,7 +521,8 @@ function renderFastingCalendar() {
         if (isToday) classes += ' today';
         if (isFuture) classes += ' future';
         if (entry && entry.completed) classes += ' completed';
-        if (isRamadanDay(ds)) classes += ' ramadan';
+        var isRamadan = isRamadanDay(ds);
+        if (isRamadan) classes += ' ramadan';
 
         var regionText = '';
         if (APP.regionStarts) {
@@ -518,7 +530,7 @@ function renderFastingCalendar() {
             if (APP.regionStarts.pak === ds) regionText += '<div class="region-start-dot pak-badge">🇵🇰 PAK</div>';
             if (APP.regionStarts.az === ds) regionText += '<div class="region-start-dot az-badge">🇦🇿 AZ</div>';
         }
-        var oc = isFuture ? '' : ' onclick="toggleFasting(\'' + ds + '\')"';
+        var oc = (isFuture || !isRamadan) ? '' : ' onclick="toggleFasting(\'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><div class="calendar-dots">' + regionText + '</div></div>';
     }
     container.innerHTML = html;

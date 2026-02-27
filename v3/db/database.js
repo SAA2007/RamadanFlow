@@ -22,6 +22,8 @@ db.exec(`
     email TEXT UNIQUE NOT NULL COLLATE NOCASE,
     password_hash TEXT NOT NULL,
     role TEXT DEFAULT 'user',
+    gender TEXT DEFAULT 'Male',
+    age INTEGER DEFAULT 30,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -98,6 +100,17 @@ db.exec(`
     UNIQUE(username, date, prayer)
   );
 `);
+
+// ===================================================================
+// MIGRATIONS
+// ===================================================================
+
+try {
+  db.exec("ALTER TABLE users ADD COLUMN gender TEXT DEFAULT 'Male'");
+  db.exec("ALTER TABLE users ADD COLUMN age INTEGER DEFAULT 30");
+} catch (e) {
+  // Columns already exist
+}
 
 // ===================================================================
 // INDEXES (idempotent — IF NOT EXISTS)

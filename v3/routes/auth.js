@@ -8,9 +8,9 @@ const router = express.Router();
 // POST /api/auth/register
 router.post('/register', (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        let { username, email, password, gender, age } = req.body;
 
-        if (!username || !email || !password) {
+        if (!username || !email || !password || !gender || !age) {
             return res.json({ success: false, error: 'All fields are required.' });
         }
         if (username.length < 3) {
@@ -31,7 +31,8 @@ router.post('/register', (req, res) => {
         const role = userCount === 0 ? 'admin' : 'user';
 
         const hash = bcrypt.hashSync(password, 10);
-        db.prepare('INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)').run(username, email, hash, role);
+        age = parseInt(age);
+        db.prepare('INSERT INTO users (username, email, password_hash, role, gender, age) VALUES (?, ?, ?, ?, ?, ?)').run(username, email, hash, role, gender, age);
 
         res.json({ success: true, message: 'Account created! ' + (role === 'admin' ? 'You are the admin 👑' : 'You can now sign in.') });
     } catch (err) {
@@ -60,7 +61,9 @@ router.post('/login', (req, res) => {
             token,
             username: user.username,
             email: user.email,
-            role: user.role
+            role: user.role,
+            gender: user.gender,
+            age: user.age
         });
     } catch (err) {
         console.error('Login error:', err);

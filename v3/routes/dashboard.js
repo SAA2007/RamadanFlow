@@ -13,7 +13,8 @@ router.get('/:year', (req, res) => {
             // Taraweeh count, rakaat, & streak
             const taraweehRows = db.prepare('SELECT date, rakaat FROM taraweeh WHERE username = ? AND year = ? AND completed = ? ORDER BY date DESC').all(u.username, year, 'YES');
             const taraweehCount = taraweehRows.length;
-            const taraweehRakaat = taraweehRows.reduce((sum, r) => sum + (r.rakaat || 0), 0);
+            const sumRakaat = taraweehRows.reduce((sum, r) => sum + (r.rakaat || 0), 0);
+            const taraweehAverage = taraweehCount > 0 ? Math.round(sumRakaat / taraweehCount) : 0;
 
             // Calculate streak
             let streak = 0;
@@ -56,24 +57,40 @@ router.get('/:year', (req, res) => {
             const namazHome = namazRows.filter(r => r.location === 'home').length;
             const namazCount = namazRows.length;
 
-            // Score (v3.2 formula - values rakaat > days)
+            // Demographics Multipliers
+            let nMosqueMult = 2;
+            let nHomeMult = 1;
+            if (u.gender === 'Female') {
+                nHomeMult = 2; // Women get equal points for home prayers
+            }
+
+            let ageBonus = 0;
+            if (u.age) {
+                if (u.age <= 12) ageBonus = 50; // Young child encouragement
+                else if (u.age >= 60) ageBonus = 50; // Elder respect boost
+            }
+
+            // Score (v3.2 formula - values rakaat > days, incl demographics)
             const score = Math.floor(
-                (taraweehRakaat * 1.5) +
+                (sumRakaat * 1.5) +
                 (totalParas * 5) +
                 (completedKhatams * 50) +
                 (fastingCount * 10) +
                 (azkarPoints * 1) +
-                (namazMosque * 2) +
-                (namazHome * 1) +
-                (streak * 2)
+                (namazMosque * nMosqueMult) +
+                (namazHome * nHomeMult) +
+                (streak * 2) +
+                ageBonus
             );
 
             return {
                 username: u.username,
                 email: u.email,
                 role: u.role,
+                gender: u.gender,
+                age: u.age,
                 taraweehCount,
-                taraweehRakaat,
+                taraweehAverage,
                 streak,
                 totalParas,
                 completedKhatams,
