@@ -10,6 +10,7 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕌</text></svg>">
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/responsive.css">
 </head>
 
 <body>
@@ -104,6 +105,51 @@
     <!-- DASHBOARD -->
     <!-- ============================================================= -->
     <div class="page-wrapper" id="dashboardWrapper" style="display:none">
+
+        <!-- SIDEBAR (Desktop only, hidden by CSS on mobile) -->
+        <aside class="sidebar" id="desktopSidebar">
+            <div class="sidebar-logo">
+                <span class="icon">🕌</span>
+                <h2>RamadanFlow</h2>
+                <p>Family Tracker</p>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-nav-item active" data-tab="taraweeh" onclick="switchTab('taraweeh')">
+                    <span class="nav-icon">🕌</span> Taraweeh
+                </button>
+                <button class="sidebar-nav-item" data-tab="quran" onclick="switchTab('quran')">
+                    <span class="nav-icon">📖</span> Quran
+                </button>
+                <button class="sidebar-nav-item" data-tab="fasting" onclick="switchTab('fasting')">
+                    <span class="nav-icon">🍽️</span> Fasting
+                </button>
+                <button class="sidebar-nav-item" data-tab="azkar" onclick="switchTab('azkar')">
+                    <span class="nav-icon">📿</span> Azkar
+                </button>
+                <button class="sidebar-nav-item" data-tab="surah" onclick="switchTab('surah')">
+                    <span class="nav-icon">📝</span> Surah
+                </button>
+                <button class="sidebar-nav-item" data-tab="namaz" onclick="switchTab('namaz')">
+                    <span class="nav-icon">🕌</span> Namaz
+                </button>
+                <button class="sidebar-nav-item" data-tab="stats" onclick="switchTab('stats')">
+                    <span class="nav-icon">📊</span> Stats
+                </button>
+                <button class="sidebar-nav-item" data-tab="admin" id="sidebarAdminBtn" style="display:none"
+                    onclick="switchTab('admin')">
+                    <span class="nav-icon">👑</span> Admin
+                </button>
+            </nav>
+            <div class="sidebar-user">
+                <div class="sidebar-user-info" onclick="openProfile()">
+                    <div>
+                        <div class="name" id="sidebarName">User</div>
+                        <div class="role-tag" id="sidebarRole">user</div>
+                    </div>
+                </div>
+                <button class="sidebar-logout" onclick="logout()">🚪 Logout</button>
+            </div>
+        </aside>
 
         <!-- HEADER -->
         <header class="header">
@@ -544,6 +590,35 @@
         </div>
 
     </div><!-- dashboardWrapper -->
+
+    <!-- BOTTOM NAV (Mobile only, hidden by CSS on desktop) -->
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="bottom-nav-item active" data-tab="taraweeh" onclick="switchTab('taraweeh')">
+            <span class="nav-icon">🕌</span>
+            <span>Taraweeh</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="quran" onclick="switchTab('quran')">
+            <span class="nav-icon">📖</span>
+            <span>Quran</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="fasting" onclick="switchTab('fasting')">
+            <span class="nav-icon">🍽️</span>
+            <span>Fasting</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="azkar" onclick="switchTab('azkar')">
+            <span class="nav-icon">📿</span>
+            <span>Azkar</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="stats" onclick="switchTab('stats')">
+            <span class="nav-icon">📊</span>
+            <span>Stats</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="admin" id="bottomNavAdminBtn" style="display:none"
+            onclick="switchTab('admin')">
+            <span class="nav-icon">👑</span>
+            <span>Admin</span>
+        </button>
+    </nav>
 
     <div class="version-tag">v3.7</div>
 

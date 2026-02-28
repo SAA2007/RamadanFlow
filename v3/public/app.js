@@ -164,9 +164,22 @@ function initDashboard() {
     goToPage('Dashboard');
     document.getElementById('displayName').textContent = APP.username;
     document.getElementById('displayRole').textContent = APP.role;
-    // Always hide admin tab first, then show only if admin
+    // Always hide admin tab/buttons first, then show only if admin
     document.getElementById('adminTabBtn').style.display = 'none';
-    if (APP.role === 'admin') document.getElementById('adminTabBtn').style.display = '';
+    var sidebarAdmin = document.getElementById('sidebarAdminBtn');
+    var bottomAdmin = document.getElementById('bottomNavAdminBtn');
+    if (sidebarAdmin) sidebarAdmin.style.display = 'none';
+    if (bottomAdmin) bottomAdmin.style.display = 'none';
+    if (APP.role === 'admin') {
+        document.getElementById('adminTabBtn').style.display = '';
+        if (sidebarAdmin) sidebarAdmin.style.display = '';
+        if (bottomAdmin) bottomAdmin.style.display = '';
+    }
+    // Populate sidebar user info
+    var sidebarName = document.getElementById('sidebarName');
+    var sidebarRole = document.getElementById('sidebarRole');
+    if (sidebarName) sidebarName.textContent = APP.username;
+    if (sidebarRole) sidebarRole.textContent = APP.role;
     showSkeleton();
     fetchRamadanDates();
     loadMultiRegionTracker();
@@ -200,10 +213,16 @@ function logout() {
 // ===================================================================
 
 function switchTab(tab) {
+    // Sync active state across all three nav systems
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
     document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.remove('active'); });
-    document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
-    document.getElementById('tab-' + tab).classList.add('active');
+    document.querySelectorAll('.sidebar-nav-item').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.bottom-nav-item').forEach(function (b) { b.classList.remove('active'); });
+
+    // Activate matching items in all navs
+    document.querySelectorAll('[data-tab="' + tab + '"]').forEach(function (el) { el.classList.add('active'); });
+    var tabEl = document.getElementById('tab-' + tab);
+    if (tabEl) tabEl.classList.add('active');
 
     if (tab === 'taraweeh') loadTaraweeh();
     else if (tab === 'quran') loadQuran();
