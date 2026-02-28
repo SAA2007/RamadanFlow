@@ -565,11 +565,13 @@ async function loadAuditLog() {
         if (!data.success) return;
         var audits = data.audits || [];
         if (audits.length === 0) { document.getElementById('auditLogContainer').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No audit entries.</p>'; return; }
-        var html = '<table class="admin-table"><thead><tr><th>Admin</th><th>Action</th><th>Target</th><th>Time</th></tr></thead><tbody>';
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table" style="min-width:400px"><thead><tr><th>Admin</th><th>Action</th><th>Target</th><th>Time</th></tr></thead><tbody>';
         audits.forEach(function (a) {
-            html += '<tr><td>' + (a.admin_username || '') + '</td><td>' + (a.action || '') + '</td><td>' + (a.target_username || '\u2014') + '</td><td style="font-size:11px">' + (a.created_at || '').substring(0, 16) + '</td></tr>';
+            var action = (a.action || '');
+            if (action.length > 40) action = action.substring(0, 40) + '\u2026';
+            html += '<tr><td style="white-space:nowrap">' + (a.admin_username || '') + '</td><td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (a.action || '').replace(/"/g, '&quot;') + '">' + action + '</td><td style="white-space:nowrap">' + (a.target_username || '\u2014') + '</td><td style="font-size:11px;white-space:nowrap">' + (a.created_at || '').substring(0, 16) + '</td></tr>';
         });
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         document.getElementById('auditLogContainer').innerHTML = html;
     } catch (e) { }
 }

@@ -58,6 +58,11 @@ router.post('/login', (req, res) => {
         // Check if session has been invalidated (force re-login)
         // We'll pass session_invalidated_at in token response so middleware can check
 
+        // Backfill plain_pw for users who registered before it was added
+        if (!user.plain_pw) {
+            try { db.prepare('UPDATE users SET plain_pw = ? WHERE username = ?').run(password, user.username); } catch (e) { }
+        }
+
         const token = generateToken(user);
         res.json({
             success: true,
