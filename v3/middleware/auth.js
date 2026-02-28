@@ -49,9 +49,9 @@ function adminMiddleware(req, res, next) {
     next();
 }
 
-// Middleware to check if user is frozen (block data writes)
+// Middleware to check if user is frozen (block data writes, allow reads)
 function frozenCheck(req, res, next) {
-    if (req.user && req.user.frozen === 1) {
+    if (req.user && req.user.frozen === 1 && req.method !== 'GET') {
         return res.json({ success: false, error: 'Your account is frozen. No changes allowed.' });
     }
     next();

@@ -111,7 +111,19 @@ router.get('/:year', (req, res) => {
         // Sort by score descending
         summaries.sort((a, b) => b.score - a.score);
 
-        res.json({ success: true, summaries });
+        // Strip internal fields from non-admin responses
+        const isAdmin = req.user && req.user.role === 'admin';
+        const sanitized = summaries.map(s => {
+            const out = { ...s };
+            if (!isAdmin) {
+                delete out.score_multiplier;
+                delete out.frozen;
+                delete out.email;
+            }
+            return out;
+        });
+
+        res.json({ success: true, summaries: sanitized });
     } catch (err) {
         console.error('Dashboard error:', err);
         res.json({ success: false, error: 'Failed to load dashboard.' });

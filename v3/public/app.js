@@ -224,6 +224,9 @@ async function fetchAnnouncement() {
         var data = await r.json();
         var banner = document.getElementById('announcementBanner');
         if (banner && data.message) {
+            // Check if this specific message was dismissed by this user
+            var dismissedMsg = localStorage.getItem('rf_dismissed_announce');
+            if (dismissedMsg === data.message) return;
             document.getElementById('announcementText').textContent = data.message;
             banner.style.display = 'flex';
         }
@@ -232,6 +235,8 @@ async function fetchAnnouncement() {
 
 function dismissAnnouncement() {
     var banner = document.getElementById('announcementBanner');
+    var text = document.getElementById('announcementText');
+    if (text && text.textContent) localStorage.setItem('rf_dismissed_announce', text.textContent);
     if (banner) banner.style.display = 'none';
 }
 
@@ -697,12 +702,8 @@ function renderLeaderboard() {
         var medalsCount = BADGE_DEFS.filter(function (b) { return b.check(s); }).length;
         var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
         var nameExtra = '';
-        if (s.score_multiplier && s.score_multiplier !== 1.0) {
-            if (APP.role === 'admin') {
-                nameExtra = ' <span style="color:var(--gold);font-size:11px" title="' + s.score_multiplier + 'x multiplier">⚡' + s.score_multiplier + 'x</span>';
-            } else {
-                nameExtra = ' ⚡';
-            }
+        if (s.score_multiplier && s.score_multiplier !== 1.0 && APP.role === 'admin') {
+            nameExtra = ' <span style="color:var(--gold);font-size:11px" title="' + s.score_multiplier + 'x multiplier">⚡' + s.score_multiplier + 'x</span>';
         }
         var frozenIcon = s.frozen ? ' 🔒' : '';
         html += '<tr><td class="rank">' + medal + '</td><td>' + s.username + nameExtra + frozenIcon + '</td><td>' + medalsCount + '</td><td>' + s.taraweehCount + '</td><td>' + s.streak + '</td><td>' + s.totalParas + '</td><td>' + s.fastingCount + '</td><td style="color:var(--gold);font-weight:700">' + s.score + '</td></tr>';
