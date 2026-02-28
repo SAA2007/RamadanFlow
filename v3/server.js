@@ -40,6 +40,13 @@ const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
+// Cache git info at startup (for admin overview)
+const { execSync } = require('child_process');
+global.GIT_INFO = { hash: 'unknown', date: 'unknown' };
+try {
+    global.GIT_INFO.hash = execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim();
+    global.GIT_INFO.date = execSync('git log -1 --format=%ci', { cwd: __dirname }).toString().trim();
+} catch (e) { /* not a git repo or git not available */ }
 
 const { authMiddleware, adminMiddleware, frozenCheck } = require('./middleware/auth');
 const { analyticsMiddleware, honeypotHandler, honeypotFieldCheck } = require('./middleware/analytics');

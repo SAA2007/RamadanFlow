@@ -230,4 +230,100 @@ router.get('/export/:year', (req, res) => {
     }
 });
 
+// GET /api/admin/status — overview data for admin dashboard
+router.get('/status', (req, res) => {
+    try {
+        const totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+        const today = new Date().toISOString().slice(0, 10);
+
+        // Count today's tracker entries across all tables
+        let todayEntries = 0;
+        try {
+            todayEntries += db.prepare("SELECT COUNT(*) as c FROM taraweeh WHERE date = ?").get(today).c;
+            todayEntries += db.prepare("SELECT COUNT(*) as c FROM fasting WHERE date = ?").get(today).c;
+            todayEntries += db.prepare("SELECT COUNT(*) as c FROM azkar WHERE date = ?").get(today).c;
+            todayEntries += db.prepare("SELECT COUNT(*) as c FROM namaz WHERE date = ?").get(today).c;
+        } catch (e) { }
+
+        // Most active user today
+        let mostActive = { username: '—', count: 0 };
+        try {
+            const rows = [
+                ...db.prepare("SELECT username FROM taraweeh WHERE date = ?").all(today),
+                ...db.prepare("SELECT username FROM fasting WHERE date = ?").all(today),
+                ...db.prepare("SELECT username FROM azkar WHERE date = ?").all(today),
+                ...db.prepare("SELECT username FROM namaz WHERE date = ?").all(today)
+            ];
+            const counts = {};
+            rows.forEach(r => { counts[r.username] = (counts[r.username] || 0) + 1; });
+            const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+            if (top) mostActive = { username: top[0], count: top[1] };
+        } catch (e) { }
+
+        // HIGH severity anomalies in last 24h
+        let highAnomalies = 0;
+        try {
+            highAnomalies = db.prepare("SELECT COUNT(*) as c FROM analytics_anomalies WHERE severity = 'HIGH' AND created_at >= datetime('now', '-24 hours')").get().c;
+        } catch (e) { }
+
+        // Table row counts for DB stats
+        let tableCounts = {};
+        try {
+            const tables = ['users', 'taraweeh', 'khatams', 'quran_progress', 'fasting', 'azkar', 'namaz', 'surah_memorization', 'settings', 'ramadan_dates',
+                'analytics_events', 'analytics_fingerprints', 'analytics_typing_profiles', 'analytics_anomalies', 'analytics_admin_audit', 'analytics_honeypot', 'analytics_requests'];
+            tables.forEach(t => {
+                try { tableCounts[t] = db.prepare('SELECT COUNT(*) as c FROM ' + t).get().c; } catch (e) { tableCounts[t] = 0; }
+            });
+        } catch (e) { }
+
+        // DB file size
+        let dbSize = 0;
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const stats = fs.statSync(path.join(__dirname, '..', 'data', 'ramadanflow.db'));
+            dbSize = stats.size;
+        } catch (e) { }
+
+        res.json({
+            success: true,
+            uptime: Math.floor(process.uptime()),
+            gitHash: global.GIT_INFO ? global.GIT_INFO.hash : 'unknown',
+            gitDate: global.GIT_INFO ? global.GIT_INFO.date : 'unknown',
+            totalUsers,
+            todayEntries,
+            mostActive,
+            highAnomalies,
+            tableCounts,
+            dbSize
+        });
+    } catch (err) {
+        console.error('Admin status error:', err);
+        res.json({ success: false, error: 'Failed to load admin status.' });
+    }
+});
+
+// POST /api/admin/db-checkpoint — WAL checkpoint
+router.post('/db-checkpoint', (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        let walSizeBefore = 0;
+        try {
+            const walPath = path.join(__dirname, '..', 'data', 'ramadanflow.db-wal');
+            if (fs.existsSync(walPath)) walSizeBefore = fs.statSync(walPath).size;
+        } catch (e) { }
+
+        const start = Date.now();
+        db.pragma('wal_checkpoint(TRUNCATE)');
+        const duration = Date.now() - start;
+
+        logAdminAction(req.user.username, 'db_checkpoint', null, null, { duration_ms: duration, wal_size_before: walSizeBefore });
+        res.json({ success: true, duration_ms: duration, wal_size_before: walSizeBefore });
+    } catch (err) {
+        console.error('DB checkpoint error:', err);
+        res.json({ success: false, error: 'Checkpoint failed.' });
+    }
+});
+
 module.exports = router;

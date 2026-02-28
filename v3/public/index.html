@@ -422,110 +422,164 @@
             <!-- TAB: ADMIN -->
             <div class="tab-content" id="tab-admin">
 
-                <div class="card">
-                    <div class="card-header">
-                        <h2>🌍 Ramadan Calendar Region</h2>
+                <!-- OVERVIEW CARD (always visible) -->
+                <div class="admin-overview" id="adminOverview">
+                    <div class="admin-overview-card">
+                        <div class="ov-value" id="ovUsers">—</div>
+                        <div class="ov-label">👥 Users</div>
                     </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Select the official region
-                        to track the start of Ramadan for your family. This will automatically adjust the calendar dates
-                        for everyone.</p>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <select id="adminRegionSelect"
-                            style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
-                            <option value="Saudi Arabia,Makkah">🇸🇦 Saudi Arabia (Makkah)</option>
-                            <option value="Pakistan,Islamabad">🇵🇰 Pakistan (Islamabad)</option>
-                            <option value="Azerbaijan,Baku">🇦🇿 Azerbaijan (Baku)</option>
-                        </select>
-                        <button class="btn btn-primary btn-sm" onclick="saveAdminRegion()">Save Region</button>
+                    <div class="admin-overview-card">
+                        <div class="ov-value" id="ovToday">—</div>
+                        <div class="ov-label">📝 Today</div>
                     </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h2>📅 Ramadan Start Dates</h2>
+                    <div class="admin-overview-card">
+                        <div class="ov-value" id="ovActive">—</div>
+                        <div class="ov-label">🔥 Most Active</div>
                     </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Set exact start dates per
-                        region. Admin dates override both the hardcoded map and the Aladhan API. Check "Notify" to
-                        announce via banner.</p>
-                    <div id="adminRamadanDates" style="display:flex;flex-direction:column;gap:4px">
-                        <!-- Populated by JS -->
+                    <div class="admin-overview-card" id="ovAlertCard">
+                        <div class="ov-value" id="ovAlerts">0</div>
+                        <div class="ov-label">🚨 Alerts 24h</div>
+                    </div>
+                    <div class="admin-overview-card">
+                        <div class="ov-value" id="ovUptime">—</div>
+                        <div class="ov-label">⏱️ Uptime</div>
+                    </div>
+                    <div class="admin-overview-card">
+                        <div class="ov-value" id="ovGit" style="font-size:14px">—</div>
+                        <div class="ov-label">🔀 Last Commit</div>
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h2>👑 User Management</h2>
+                <!-- SECTION: Users -->
+                <div class="admin-section" id="adminSec-users">
+                    <div class="admin-section-header" onclick="toggleAdminSection('users')">
+                        <h3>👥 User Management</h3>
+                        <span class="admin-section-badge" id="adminBadge-users">0</span>
+                        <span class="admin-section-chevron">▼</span>
                     </div>
-                    <input type="text" class="admin-search" id="adminSearch" placeholder="🔍 Search by name or email..."
-                        oninput="filterAdminUsers()">
-                    <div id="adminUserList"></div>
+                    <div class="admin-section-body">
+                        <input type="text" class="admin-user-search" id="adminSearch" placeholder="🔍 Search by name or email..." oninput="filterAdminUsers()">
+                        <div class="admin-user-grid" id="adminUserList"></div>
+                    </div>
                 </div>
 
-                <div class="card" id="analyticsAdminCard" style="display:none">
-                    <div class="card-header">
-                        <h2>🛡️ Security Analytics</h2>
+                <!-- SECTION: Ramadan Settings -->
+                <div class="admin-section collapsed" id="adminSec-ramadan">
+                    <div class="admin-section-header" onclick="toggleAdminSection('ramadan')">
+                        <h3>📅 Ramadan Settings</h3>
+                        <span class="admin-section-badge">3 regions</span>
+                        <span class="admin-section-chevron">▼</span>
                     </div>
-                    <div style="display:grid;gap:16px">
-                        <div>
-                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--gold)">⚠️ Anomaly Feed</h3>
-                            <div id="anomalyFeed" style="overflow-x:auto;max-height:300px;overflow-y:auto">Loading...
+                    <div class="admin-section-body">
+                        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Region selector + date overrides. Admin dates take priority over hardcoded overrides and the Aladhan API.</p>
+                        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+                            <select id="adminRegionSelect" style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
+                                <option value="Saudi Arabia,Makkah">🇸🇦 Saudi Arabia (Makkah)</option>
+                                <option value="Pakistan,Islamabad">🇵🇰 Pakistan (Islamabad)</option>
+                                <option value="Azerbaijan,Baku">🇦🇿 Azerbaijan (Baku)</option>
+                            </select>
+                            <button class="btn btn-primary btn-sm" onclick="saveAdminRegion()">Save Region</button>
+                        </div>
+                        <div id="adminRamadanDates" style="display:flex;flex-direction:column;gap:4px"></div>
+                    </div>
+                </div>
+
+                <!-- SECTION: Security Analytics -->
+                <div class="admin-section collapsed" id="adminSec-security">
+                    <div class="admin-section-header" onclick="toggleAdminSection('security')">
+                        <h3>🛡️ Security Analytics</h3>
+                        <span class="admin-section-badge" id="adminBadge-security">—</span>
+                        <span class="admin-section-chevron">▼</span>
+                    </div>
+                    <div class="admin-section-body">
+                        <!-- Anomaly Feed -->
+                        <h4 style="color:var(--gold);margin:0 0 8px">⚠️ Anomaly Feed <span id="anomalyNewPill" class="new-anomaly-pill" style="display:none" onclick="loadAnomalies()"></span></h4>
+                        <div class="admin-filter-bar">
+                            <select id="anomalyFilterSeverity" onchange="applyAnomalyFilters()">
+                                <option value="">All Severity</option>
+                                <option value="HIGH">HIGH</option>
+                                <option value="MEDIUM">MEDIUM</option>
+                                <option value="LOW">LOW</option>
+                            </select>
+                            <select id="anomalyFilterType" onchange="applyAnomalyFilters()">
+                                <option value="">All Types</option>
+                            </select>
+                            <input type="text" id="anomalyFilterUser" placeholder="Username..." oninput="applyAnomalyFilters()">
+                            <label class="admin-toggle"><input type="checkbox" id="anomalySuppressToggle" onchange="loadAnomalies()"> Suppress false positives</label>
+                        </div>
+                        <div class="table-scroll-wrap">
+                            <div id="anomalyFeed">Loading...</div>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:10px">
+                            <button class="btn btn-secondary btn-sm" onclick="exportAnomaliesCSV()">📥 Export CSV</button>
+                            <button class="btn btn-secondary btn-sm" style="color:var(--red)" onclick="clearAllAnomalies()">🗑 Clear All</button>
+                        </div>
+
+                        <hr style="border-color:var(--border-color);margin:20px 0">
+
+                        <!-- Honeypot -->
+                        <h4 style="color:var(--red);margin:0 0 8px">🍯 Honeypot Hits</h4>
+                        <div class="table-scroll-wrap"><div id="honeypotLog">Loading...</div></div>
+
+                        <hr style="border-color:var(--border-color);margin:20px 0">
+
+                        <!-- Fingerprints -->
+                        <h4 style="color:var(--green, #2ecc71);margin:0 0 8px">🔑 Fingerprint Consistency</h4>
+                        <div class="table-scroll-wrap"><div id="fingerprintScores">Loading...</div></div>
+
+                        <hr style="border-color:var(--border-color);margin:20px 0">
+
+                        <!-- Typing -->
+                        <h4 style="color:var(--blue, #3498db);margin:0 0 8px">⌨️ Typing Baseline</h4>
+                        <div class="table-scroll-wrap"><div id="typingBaseline">Loading...</div></div>
+
+                        <hr style="border-color:var(--border-color);margin:20px 0">
+
+                        <!-- Live Request Log -->
+                        <h4 style="color:var(--text-primary);margin:0 0 8px">📡 Live Request Log <span style="font-size:11px;color:var(--text-muted)">(auto-refreshes 10s)</span></h4>
+                        <div class="table-scroll-wrap"><div id="liveRequestLog">Loading...</div></div>
+                    </div>
+                </div>
+
+                <!-- SECTION: Tools -->
+                <div class="admin-section collapsed" id="adminSec-tools">
+                    <div class="admin-section-header" onclick="toggleAdminSection('tools')">
+                        <h3>🔧 Tools</h3>
+                        <span class="admin-section-chevron">▼</span>
+                    </div>
+                    <div class="admin-section-body">
+                        <div class="admin-tools-grid">
+                            <div class="admin-tool-card">
+                                <h4>📢 Announcement</h4>
+                                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px" id="currentAnnouncementPreview">No active announcement.</p>
+                                <textarea id="adminAnnouncementInput" rows="2" placeholder="Type announcement..." style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif;resize:vertical;margin-bottom:8px"></textarea>
+                                <div style="display:flex;gap:8px">
+                                    <button class="btn btn-primary btn-sm" onclick="setAnnouncement()">Set</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="clearAnnouncement()">Clear</button>
+                                </div>
+                            </div>
+                            <div class="admin-tool-card">
+                                <h4>📥 Export Data</h4>
+                                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Download all user tracker data.</p>
+                                <div style="display:flex;flex-direction:column;gap:6px">
+                                    <button class="btn btn-secondary btn-sm" onclick="exportJSON()">📥 Download JSON</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📥 Download CSV</button>
+                                </div>
+                            </div>
+                            <div class="admin-tool-card">
+                                <h4>🗄️ Database Stats</h4>
+                                <div id="dbStatsContainer" style="font-size:12px;color:var(--text-secondary)">Loading...</div>
+                                <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="runWALCheckpoint()">🔄 WAL Checkpoint</button>
+                                <div id="checkpointResult" class="action-status"></div>
+                            </div>
+                            <div class="admin-tool-card">
+                                <h4>📋 Audit Log</h4>
+                                <div class="table-scroll-wrap" style="max-height:200px;overflow-y:auto"><div id="auditLogContainer">Loading...</div></div>
                             </div>
                         </div>
-                        <div>
-                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--red)">🍯 Honeypot Hits</h3>
-                            <div id="honeypotLog" style="overflow-x:auto;max-height:200px;overflow-y:auto">Loading...
-                            </div>
-                        </div>
-                        <div>
-                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--green)">🔑 Fingerprint Consistency
-                            </h3>
-                            <div id="fingerprintScores" style="overflow-x:auto">Loading...</div>
-                        </div>
-                        <div>
-                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--blue)">⌨️ Typing Baseline</h3>
-                            <div id="typingBaseline" style="overflow-x:auto;max-height:200px;overflow-y:auto">Loading...
-                            </div>
-                        </div>
                     </div>
                 </div>
 
-                <div class="card">
-                    <div class="card-header">
-                        <h2>✏️ Edit User Data</h2>
-                    </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Select a user to view and
-                        edit their data (Taraweeh, Quran, Fasting, etc.).</p>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <select id="adminEditUserSelect"
-                            style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
-                            <option value="">— Select user —</option>
-                        </select>
-                        <button class="btn btn-primary btn-sm" onclick="openAdminEditUser()">Edit</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h2>📢 Announcement</h2>
-                    </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Set a banner message
-                        visible to all users. Leave empty and click Clear to remove.</p>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <input type="text" id="adminAnnouncementInput" placeholder="Type announcement..."
-                            style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
-                        <button class="btn btn-primary btn-sm" onclick="setAnnouncement()">Set</button>
-                        <button class="btn btn-secondary btn-sm" onclick="clearAnnouncement()">Clear</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h2>📥 Export Data</h2>
-                    </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Download all data
-                        (Taraweeh, Quran, Fasting, Azkar, Surah, Namaz) as JSON.</p>
-                    <button class="btn btn-secondary" onclick="exportCSV()">📥 Download CSV</button>
-                </div>
             </div>
 
         </div><!-- main-content -->
@@ -697,6 +751,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/app.js"></script>
+    <script src="/admin.js"></script>
     <script src="/analytics-client.js"></script>
 </body>
 

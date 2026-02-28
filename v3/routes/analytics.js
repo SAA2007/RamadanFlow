@@ -145,9 +145,13 @@ router.post('/events', function (req, res) {
 // Anomaly feed
 router.get('/anomalies', authMiddleware, adminMiddleware, function (req, res) {
     try {
-        var rows = db.prepare(`SELECT * FROM analytics_anomalies ORDER BY
-            CASE severity WHEN 'HIGH' THEN 0 WHEN 'MEDIUM' THEN 1 ELSE 2 END,
-            created_at DESC LIMIT 100`).all();
+        var suppress = req.query.suppress === 'true';
+        var query = 'SELECT * FROM analytics_anomalies';
+        if (suppress) {
+            query += " WHERE NOT (anomaly_type = 'headless_browser' AND details LIKE '%\"suppressed\":true%')";
+        }
+        query += " ORDER BY CASE severity WHEN 'HIGH' THEN 0 WHEN 'MEDIUM' THEN 1 ELSE 2 END, created_at DESC LIMIT 100";
+        var rows = db.prepare(query).all();
         res.json({ success: true, anomalies: rows });
     } catch (e) {
         res.json({ success: false, error: 'Failed to load anomalies.' });
@@ -195,6 +199,16 @@ router.get('/admin-audit', authMiddleware, adminMiddleware, function (req, res) 
         res.json({ success: true, audits: rows });
     } catch (e) {
         res.json({ success: false, error: 'Failed to load audit log.' });
+    }
+});
+
+// Live request log
+router.get('/requests', authMiddleware, adminMiddleware, function (req, res) {
+    try {
+        var rows = db.prepare('SELECT * FROM analytics_requests ORDER BY id DESC LIMIT 50').all();
+        res.json({ success: true, requests: rows });
+    } catch (e) {
+        res.json({ success: false, error: 'Failed to load request log.' });
     }
 });
 

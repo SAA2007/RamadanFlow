@@ -232,6 +232,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_analytics_events_session ON analytics_events(session_id);
   CREATE INDEX IF NOT EXISTS idx_analytics_anomalies_severity ON analytics_anomalies(severity);
   CREATE INDEX IF NOT EXISTS idx_analytics_fingerprints_user ON analytics_fingerprints(username);
+
+  CREATE TABLE IF NOT EXISTS analytics_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    method TEXT,
+    route TEXT,
+    username TEXT COLLATE NOCASE,
+    status_code INTEGER,
+    response_ms INTEGER,
+    cf_country TEXT,
+    user_agent TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_analytics_requests_created ON analytics_requests(created_at);
 `);
+
+// Auto-cleanup: keep last 500 request rows
+try {
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS cleanup_analytics_requests
+    AFTER INSERT ON analytics_requests
+    BEGIN
+      DELETE FROM analytics_requests WHERE id NOT IN (
+        SELECT id FROM analytics_requests ORDER BY id DESC LIMIT 500
+      );
+    END;
+  `);
+} catch (e) { /* trigger may already exist */ }
 
 module.exports = db;

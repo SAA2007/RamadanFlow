@@ -779,479 +779,103 @@ async function changePasswordSubmit() {
 }
 
 // ===================================================================
-// ADMIN
+// ADMIN — moved to admin.js (loaded as separate script)
 // ===================================================================
 
-async function loadAdmin() {
-    if (APP.role !== 'admin') return;
+// ===================================================================
+// SMART POPUP / BOTTOM SHEET
+// ===================================================================
 
-    // Load current region first
-    var rReg = await api('/ramadan/region');
-    if (rReg.success && rReg.region) {
-        var val = rReg.region.country + ',' + rReg.region.city;
-        var selRegion = document.getElementById('adminRegionSelect');
-        if (selRegion) selRegion.value = val;
-    }
+var _activePopup = null;
 
-    showLoading('Loading users...');
-    var r = await api('/admin/users');
-    hideLoading();
-    if (r.success) {
-        APP.adminUsers = r.users;
-        renderAdminUsers(r.users);
-        var sel = document.getElementById('adminEditUserSelect');
-        sel.innerHTML = '<option value="">— Select user —</option>';
-        r.users.forEach(function (u) { sel.innerHTML += '<option value="' + u.username + '">' + u.username + '</option>'; });
-    }
-
-    // Load analytics dashboard
-    loadAnalyticsDashboard();
-
-    // Load Ramadan date management
-    loadAdminRamadanDates();
+function closeSmartPopup() {
+    if (!_activePopup) return;
+    // Restore focus to trigger element
+    if (_activePopup.trigger) _activePopup.trigger.focus();
+    if (_activePopup.backdrop) _activePopup.backdrop.remove();
+    if (_activePopup.popup) _activePopup.popup.remove();
+    document.body.classList.remove('scroll-locked');
+    document.removeEventListener('keydown', _popupKeyHandler);
+    _activePopup = null;
 }
 
-async function loadAnalyticsDashboard() {
-    try {
-        var card = document.getElementById('analyticsAdminCard');
-        if (!card) return;
-        card.style.display = 'block';
+function _popupKeyHandler(e) {
+    if (e.key === 'Escape') { e.preventDefault(); closeSmartPopup(); }
+    // Focus trap
+    if (e.key === 'Tab' && _activePopup && _activePopup.popup) {
+        var focusable = _activePopup.popup.querySelectorAll('button, input, select, textarea, [tabindex]');
+        if (focusable.length === 0) return;
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+}
 
-        // Anomaly feed
-        var aRes = await api('/analytics/anomalies');
-        if (aRes.success && aRes.anomalies) {
-            var aHtml = '<table class="family-table"><thead><tr><th>Sev</th><th>Type</th><th>User</th><th>Details</th><th>Time</th></tr></thead><tbody>';
-            if (aRes.anomalies.length === 0) {
-                aHtml += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No anomalies detected ✅</td></tr>';
+function openSmartPopup(triggerEl, contentHtml, opts) {
+    closeSmartPopup();
+    opts = opts || {};
+    var isMobile = window.innerWidth < 768;
+
+    // Backdrop
+    var backdrop = document.createElement('div');
+    backdrop.className = isMobile ? 'bottom-sheet-backdrop' : 'smart-popup-backdrop';
+    backdrop.addEventListener('click', closeSmartPopup);
+    document.body.appendChild(backdrop);
+
+    var popup;
+
+    if (isMobile) {
+        // Bottom sheet
+        popup = document.createElement('div');
+        popup.className = 'bottom-sheet';
+        popup.innerHTML = '<div class="bottom-sheet-handle"></div>' + contentHtml;
+        document.body.appendChild(popup);
+    } else {
+        // Desktop: viewport-aware positioning
+        popup = document.createElement('div');
+        popup.className = 'smart-popup';
+        popup.innerHTML = contentHtml;
+        document.body.appendChild(popup);
+
+        try {
+            var rect = triggerEl.getBoundingClientRect();
+            var popH = popup.offsetHeight;
+            var popW = popup.offsetWidth;
+            var spaceBelow = window.innerHeight - rect.bottom;
+            var spaceRight = window.innerWidth - rect.left;
+
+            // Vertical: below or above
+            if (spaceBelow >= popH + 16) {
+                popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
             } else {
-                aRes.anomalies.forEach(function (a) {
-                    var sevColor = a.severity === 'HIGH' ? 'var(--red)' : a.severity === 'MEDIUM' ? 'var(--gold)' : 'var(--text-muted)';
-                    var details = '';
-                    try { var d = JSON.parse(a.details); details = Object.keys(d).map(function (k) { return k + ':' + d[k]; }).join(', '); } catch (e) { details = a.details || ''; }
-                    aHtml += '<tr><td style="color:' + sevColor + ';font-weight:700">' + a.severity + '</td><td>' + a.anomaly_type + '</td><td>' + (a.username || '-') + '</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + details + '</td><td style="font-size:11px">' + (a.created_at || '') + '</td></tr>';
-                });
+                popup.style.top = (rect.top + window.scrollY - popH - 4) + 'px';
             }
-            aHtml += '</tbody></table>';
-            document.getElementById('anomalyFeed').innerHTML = aHtml;
-        }
 
-        // Honeypot log
-        var hRes = await api('/analytics/honeypot-log');
-        if (hRes.success) {
-            if (hRes.hits.length === 0) {
-                document.getElementById('honeypotLog').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No honeypot hits yet 🍯</p>';
+            // Horizontal: left or right-anchored
+            if (spaceRight >= popW) {
+                popup.style.left = rect.left + 'px';
             } else {
-                var hHtml = '<table class="family-table"><thead><tr><th>Route</th><th>IP Hash</th><th>UA</th><th>Time</th></tr></thead><tbody>';
-                hRes.hits.forEach(function (h) {
-                    hHtml += '<tr><td style="color:var(--red)">' + h.route + '</td><td style="font-size:11px">' + (h.ip_hash || '-') + '</td><td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (h.user_agent || '-') + '</td><td style="font-size:11px">' + (h.created_at || '') + '</td></tr>';
-                });
-                hHtml += '</tbody></table>';
-                document.getElementById('honeypotLog').innerHTML = hHtml;
+                popup.style.right = '16px';
+                popup.style.left = 'auto';
             }
+        } catch (e) {
+            // Fallback: centered
+            popup.className = 'smart-popup smart-popup-centered';
         }
-
-        // Fingerprint scores
-        var fRes = await api('/analytics/fingerprint-scores');
-        if (fRes.success) {
-            if (fRes.scores.length === 0) {
-                document.getElementById('fingerprintScores').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No fingerprints collected yet</p>';
-            } else {
-                var fHtml = '<table class="family-table"><thead><tr><th>User</th><th>Unique FPs</th><th>Sessions</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody>';
-                fRes.scores.forEach(function (s) {
-                    var fpColor = s.unique_fps > 3 ? 'var(--red)' : s.unique_fps > 1 ? 'var(--gold)' : 'var(--green)';
-                    fHtml += '<tr><td>' + s.username + '</td><td style="color:' + fpColor + ';font-weight:700">' + s.unique_fps + '</td><td>' + s.total_sessions + '</td><td style="font-size:11px">' + (s.first_seen || '') + '</td><td style="font-size:11px">' + (s.last_seen || '') + '</td></tr>';
-                });
-                fHtml += '</tbody></table>';
-                document.getElementById('fingerprintScores').innerHTML = fHtml;
-            }
-        }
-
-        // Typing baseline (show all users' latest)
-        var tHtml = '<p style="color:var(--text-muted);font-size:13px">Typing profiles build over time as users type.</p>';
-        document.getElementById('typingBaseline').innerHTML = tHtml;
-
-    } catch (e) {
-        // Fail silent
-    }
-}
-
-async function saveAdminRegion() {
-    var val = document.getElementById('adminRegionSelect').value;
-    if (!val) return;
-    var parts = val.split(',');
-    var country = parts[0];
-    var city = parts[1];
-
-    if (!confirm('This will shift the Ramadan start date for the entire app to ' + country + ' (' + city + '). Proceed?')) return;
-
-    showLoading('Updating Regional Calendar...');
-    var r = await api('/ramadan/region', { method: 'POST', body: { country: country, city: city } });
-    hideLoading();
-
-    if (r.success) {
-        showToast(r.message);
-        // Re-fetch everything to adjust calendar instantly
-        fetchRamadanDates();
-        loadDashboard();
-    } else {
-        showToast(r.error, 'error');
-    }
-}
-
-function filterAdminUsers() {
-    var q = document.getElementById('adminSearch').value.toLowerCase();
-    var filtered = APP.adminUsers.filter(function (u) { return u.username.toLowerCase().indexOf(q) !== -1 || u.email.toLowerCase().indexOf(q) !== -1; });
-    renderAdminUsers(filtered);
-}
-
-function renderAdminUsers(users) {
-    var c = document.getElementById('adminUserList');
-    var html = '';
-    users.forEach(function (u) {
-        var isMe = u.username.toLowerCase() === APP.username.toLowerCase();
-        var frozenIcon = u.frozen ? '🔒' : '';
-        html += '<div class="admin-user-row"><div class="admin-user-info">';
-        html += '<span class="name">' + u.username + (u.role === 'admin' ? ' 👑' : '') + ' ' + frozenIcon + '</span>';
-        html += '<span class="email">' + u.email + ' · Joined ' + u.created + '</span>';
-        html += '</div><div class="admin-actions" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">';
-
-        // Password viewer
-        html += '<button class="btn btn-secondary btn-sm" id="pwBtn_' + u.username + '" onclick="revealPassword(\'' + u.username + '\')" title="Reveal password">👁</button>';
-
-        // Score multiplier
-        html += '<input type="number" min="0.1" max="5.0" step="0.1" value="' + (u.score_multiplier || 1.0) + '" id="mult_' + u.username + '" style="width:60px;padding:4px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);border-radius:4px;font-size:12px">';
-        html += '<button class="btn btn-secondary btn-sm" onclick="setMultiplier(\'' + u.username + '\')" title="Apply multiplier">🚀</button>';
-
-        if (!isMe) {
-            html += '<button class="btn btn-secondary btn-sm" onclick="adminResetPw(\'' + u.username + '\')" title="Reset password">🔑</button>';
-            var tr = u.role === 'admin' ? 'user' : 'admin', tl = u.role === 'admin' ? '⬇' : '⬆';
-            html += '<button class="btn btn-secondary btn-sm" onclick="adminToggleRole(\'' + u.username + '\',\'' + tr + '\')" title="' + (u.role === 'admin' ? 'Demote' : 'Promote') + '">' + tl + '</button>';
-            html += '<button class="btn btn-secondary btn-sm" onclick="toggleFreeze(\'' + u.username + '\', ' + (u.frozen ? 'false' : 'true') + ')" title="' + (u.frozen ? 'Unfreeze' : 'Freeze') + '">' + (u.frozen ? '🔓' : '❄') + '</button>';
-            html += '<button class="btn btn-secondary btn-sm" onclick="forceReLogin(\'' + u.username + '\')" title="Force re-login">⛔</button>';
-            html += '<button class="btn btn-secondary btn-sm" onclick="impersonateUser(\'' + u.username + '\')" title="View as user">👤</button>';
-            html += '<button class="btn btn-secondary btn-sm" onclick="openDataEditor(\'' + u.username + '\')" title="Edit data">📝</button>';
-            html += '<button class="btn btn-danger btn-sm" onclick="adminDeleteUsr(\'' + u.username + '\')" title="Delete">🗑</button>';
-        } else { html += '<span style="font-size:12px;color:var(--text-muted)">You</span>'; }
-        html += '</div></div>';
-    });
-    c.innerHTML = html;
-}
-
-// --- Password Viewer ---
-async function revealPassword(username) {
-    var btn = document.getElementById('pwBtn_' + username);
-    if (btn.dataset.revealed === 'true') {
-        btn.textContent = '👁';
-        btn.dataset.revealed = 'false';
-        return;
-    }
-    var r = await api('/admin/reveal-password/' + username);
-    if (r.success) {
-        btn.textContent = r.password;
-        btn.dataset.revealed = 'true';
-        btn.style.fontSize = '11px';
-        btn.style.minWidth = 'auto';
-    } else {
-        showToast(r.error, 'error');
-    }
-}
-
-// --- Score Multiplier ---
-async function setMultiplier(username) {
-    var val = document.getElementById('mult_' + username).value;
-    var r = await api('/admin/set-multiplier', { method: 'POST', body: { username: username, multiplier: parseFloat(val) } });
-    if (r.success) { showToast(r.message); refreshDashboard(); }
-    else showToast(r.error, 'error');
-}
-
-// --- Freeze ---
-async function toggleFreeze(username, frozen) {
-    var r = await api('/admin/toggle-freeze', { method: 'POST', body: { username: username, frozen: frozen } });
-    if (r.success) { showToast(r.message); loadAdmin(); }
-    else showToast(r.error, 'error');
-}
-
-// --- Force Re-Login ---
-async function forceReLogin(username) {
-    if (!confirm('Force ' + username + ' to re-login?')) return;
-    var r = await api('/admin/invalidate-session', { method: 'POST', body: { username: username } });
-    if (r.success) showToast(r.message);
-    else showToast(r.error, 'error');
-}
-
-// --- Impersonate ---
-function impersonateUser(username) {
-    APP.realUsername = localStorage.getItem('rf_username');
-    APP.username = username;
-    APP.impersonating = true;
-    var banner = document.getElementById('impersonateBanner');
-    if (banner) {
-        document.getElementById('impersonateName').textContent = username;
-        banner.style.display = 'flex';
-    }
-    document.getElementById('displayName').textContent = username + ' (Preview)';
-    loadDashboard();
-}
-
-function exitImpersonate() {
-    APP.username = APP.realUsername || localStorage.getItem('rf_username');
-    APP.impersonating = false;
-    var banner = document.getElementById('impersonateBanner');
-    if (banner) banner.style.display = 'none';
-    document.getElementById('displayName').textContent = APP.username;
-    loadDashboard();
-}
-
-// --- Announcement ---
-async function setAnnouncement() {
-    var msg = document.getElementById('adminAnnouncementInput').value.trim();
-    var r = await api('/admin/announcement', { method: 'POST', body: { message: msg } });
-    if (r.success) showToast(r.message);
-    else showToast(r.error, 'error');
-}
-
-async function clearAnnouncement() {
-    document.getElementById('adminAnnouncementInput').value = '';
-    var r = await api('/admin/announcement', { method: 'POST', body: { message: '' } });
-    if (r.success) {
-        showToast('Announcement cleared.');
-        var banner = document.getElementById('announcementBanner');
-        if (banner) banner.style.display = 'none';
-    }
-}
-
-// --- Ramadan Date Management ---
-async function loadAdminRamadanDates() {
-    var container = document.getElementById('adminRamadanDates');
-    if (!container) return;
-
-    var r = await api('/ramadan/admin-dates/' + APP.year);
-    var adminDates = r.success ? r.dates : {};
-
-    var regions = [
-        { id: 'ksa', label: '🇸🇦 KSA' },
-        { id: 'pak', label: '🇵🇰 PAK' },
-        { id: 'az', label: '🇦🇿 AZ' }
-    ];
-
-    var html = '';
-    regions.forEach(function (reg) {
-        var hasAdmin = adminDates[reg.id] ? true : false;
-        var dateVal = hasAdmin ? adminDates[reg.id].date : '';
-        var noteVal = hasAdmin ? adminDates[reg.id].note : '';
-        var badge = hasAdmin ? '<span style="background:#27ae60;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:8px">Admin override active</span>' : '';
-
-        html += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color)">';
-        html += '<span style="min-width:60px;font-weight:600">' + reg.label + badge + '</span>';
-        html += '<input type="date" id="ramDate_' + reg.id + '" value="' + dateVal + '" style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-family:inherit">';
-        html += '<input type="text" id="ramNote_' + reg.id + '" value="' + noteVal + '" placeholder="Note (optional)" style="flex:1;min-width:120px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-family:inherit;font-size:12px">';
-        html += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-secondary)"><input type="checkbox" id="ramNotify_' + reg.id + '"> Notify</label>';
-        html += '<button class="btn btn-primary btn-sm" onclick="saveAdminDate(\'' + reg.id + '\')">Save</button>';
-        if (hasAdmin) {
-            html += '<button class="btn btn-secondary btn-sm" onclick="clearAdminDate(\'' + reg.id + '\')" title="Clear admin override">✕</button>';
-        }
-        html += '</div>';
-    });
-    container.innerHTML = html;
-}
-
-async function saveAdminDate(region) {
-    var dateVal = document.getElementById('ramDate_' + region).value;
-    var noteVal = document.getElementById('ramNote_' + region).value;
-    var notify = document.getElementById('ramNotify_' + region).checked;
-
-    if (!dateVal) { showToast('Please select a date.', 'error'); return; }
-
-    var r = await api('/ramadan/admin-dates', {
-        method: 'POST', body: {
-            year: APP.year,
-            region: region,
-            date: dateVal,
-            note: noteVal,
-            notify: notify
-        }
-    });
-
-    if (r.success) {
-        showToast(r.message);
-        loadAdminRamadanDates();
-        // If announced, also refresh banner
-        if (notify) fetchAnnouncement();
-    } else {
-        showToast(r.error, 'error');
-    }
-}
-
-async function clearAdminDate(region) {
-    var r = await api('/ramadan/admin-dates/clear', {
-        method: 'POST', body: {
-            year: APP.year,
-            region: region
-        }
-    });
-
-    if (r.success) {
-        showToast(r.message);
-        loadAdminRamadanDates();
-    } else {
-        showToast(r.error, 'error');
-    }
-}
-
-// --- Data Editor ---
-async function openDataEditor(username) {
-    showLoading('Loading data...');
-    var r = await api('/admin/user-data/' + username + '/' + APP.year);
-    hideLoading();
-    if (!r.success) { showToast(r.error, 'error'); return; }
-
-    var modal = document.getElementById('dataEditorModal');
-    modal.classList.remove('hidden');
-    modal.setAttribute('data-username', username);
-    document.getElementById('dataEditorTitle').textContent = 'Edit Data: ' + username;
-
-    var html = '';
-
-    // Taraweeh
-    if (r.data.taraweeh.length > 0) {
-        html += '<h3 style="color:var(--gold);margin:12px 0 8px">🕌 Taraweeh</h3>';
-        r.data.taraweeh.forEach(function (t) {
-            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
-            html += '<span style="min-width:90px">' + t.date + '</span>';
-            html += '<input type="number" min="0" max="20" step="2" value="' + t.rakaat + '" data-type="taraweeh" data-id="' + t.id + '" data-field="rakaat" class="data-edit-input" style="width:60px">';
-            html += '<span style="color:var(--text-muted)">rakaat</span></div>';
-        });
     }
 
-    // Fasting
-    if (r.data.fasting.length > 0) {
-        html += '<h3 style="color:var(--gold);margin:12px 0 8px">🍽️ Fasting</h3>';
-        r.data.fasting.forEach(function (f) {
-            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
-            html += '<span style="min-width:90px">' + f.date + '</span>';
-            html += '<select data-type="fasting" data-id="' + f.id + '" data-field="completed" class="data-edit-input">';
-            html += '<option value="YES" ' + (f.completed === 'YES' ? 'selected' : '') + '>YES</option>';
-            html += '<option value="NO" ' + (f.completed !== 'YES' ? 'selected' : '') + '>NO</option></select></div>';
-        });
-    }
+    // Lock body scroll
+    document.body.classList.add('scroll-locked');
 
-    // Azkar
-    if (r.data.azkar.length > 0) {
-        html += '<h3 style="color:var(--gold);margin:12px 0 8px">📿 Azkar</h3>';
-        r.data.azkar.forEach(function (a) {
-            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
-            html += '<span style="min-width:90px">' + a.date + '</span>';
-            html += '<label><input type="checkbox" ' + (a.morning ? 'checked' : '') + ' data-type="azkar" data-id="' + a.id + '" data-field="morning" class="data-edit-input"> ☀️</label>';
-            html += '<label><input type="checkbox" ' + (a.evening ? 'checked' : '') + ' data-type="azkar" data-id="' + a.id + '" data-field="evening" class="data-edit-input"> 🌙</label></div>';
-        });
-    }
+    // Focus trap
+    document.addEventListener('keydown', _popupKeyHandler);
+    _activePopup = { popup: popup, backdrop: backdrop, trigger: triggerEl };
 
-    // Namaz
-    if (r.data.namaz.length > 0) {
-        html += '<h3 style="color:var(--gold);margin:12px 0 8px">🕌 Namaz</h3>';
-        r.data.namaz.forEach(function (n) {
-            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
-            html += '<span style="min-width:90px">' + n.date + '</span>';
-            html += '<span style="min-width:60px">' + n.prayer + '</span>';
-            html += '<select data-type="namaz" data-id="' + n.id + '" data-field="location" class="data-edit-input">';
-            html += '<option value="missed" ' + (n.location === 'missed' ? 'selected' : '') + '>missed</option>';
-            html += '<option value="home" ' + (n.location === 'home' ? 'selected' : '') + '>home</option>';
-            html += '<option value="mosque" ' + (n.location === 'mosque' ? 'selected' : '') + '>mosque</option></select></div>';
-        });
-    }
-
-    // Surah
-    if (r.data.surah.length > 0) {
-        html += '<h3 style="color:var(--gold);margin:12px 0 8px">📝 Surah</h3>';
-        r.data.surah.forEach(function (s) {
-            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
-            html += '<span style="min-width:120px">' + s.surah_name + '</span>';
-            html += '<input type="number" min="0" max="' + s.total_ayah + '" value="' + s.memorized_ayah + '" data-type="surah_memorization" data-id="' + s.id + '" data-field="memorized_ayah" class="data-edit-input" style="width:60px">';
-            html += '<span style="color:var(--text-muted)">/' + s.total_ayah + '</span></div>';
-        });
-    }
-
-    if (!html) html = '<p style="color:var(--text-muted);text-align:center;padding:20px">No data found for ' + APP.year + '</p>';
-    document.getElementById('dataEditorContent').innerHTML = html;
-}
-
-function closeDataEditor() {
-    document.getElementById('dataEditorModal').classList.add('hidden');
-}
-
-async function saveDataEditor() {
-    var username = document.getElementById('dataEditorModal').getAttribute('data-username');
-    var inputs = document.querySelectorAll('.data-edit-input');
-    var changes = [];
-    inputs.forEach(function (inp) {
-        var val;
-        if (inp.type === 'checkbox') val = inp.checked ? 1 : 0;
-        else if (inp.type === 'number') val = parseInt(inp.value);
-        else val = inp.value;
-        changes.push({ type: inp.dataset.type, id: parseInt(inp.dataset.id), field: inp.dataset.field, value: val });
-    });
-
-    showLoading('Saving...');
-    var r = await api('/admin/user-data/save', { method: 'POST', body: { username: username, changes: changes } });
-    hideLoading();
-    if (r.success) { showToast(r.message); closeDataEditor(); refreshDashboard(); }
-    else showToast(r.error, 'error');
-}
-
-async function adminResetPw(username) {
-    var np = prompt('New password for ' + username + ':');
-    if (!np || np.length < 4) { showToast('Min 4 chars.', 'error'); return; }
-    showLoading('Resetting...');
-    var r = await api('/admin/reset-password', { method: 'POST', body: { targetUsername: username, newPassword: np } });
-    hideLoading();
-    showToast(r.success ? r.message : r.error, r.success ? undefined : 'error');
-}
-
-async function adminToggleRole(username, newRole) {
-    showLoading('Updating...');
-    var r = await api('/admin/change-role', { method: 'POST', body: { targetUsername: username, newRole: newRole } });
-    hideLoading();
-    if (r.success) { showToast(r.message); loadAdmin(); }
-    else showToast(r.error, 'error');
-}
-
-async function adminDeleteUsr(username) {
-    if (!confirm('Delete ' + username + '? This cannot be undone.')) return;
-    showLoading('Deleting...');
-    var r = await api('/admin/delete-user', { method: 'POST', body: { targetUsername: username } });
-    hideLoading();
-    if (r.success) { showToast(r.message); loadAdmin(); }
-    else showToast(r.error, 'error');
-}
-
-function openAdminEditUser() {
-    var sel = document.getElementById('adminEditUserSelect').value;
-    if (!sel) { showToast('Select a user first.', 'error'); return; }
-    impersonateUser(sel);
-}
-
-function exitAdminEdit() {
-    exitImpersonate();
-}
-
-async function exportCSV() {
-    showLoading('Exporting...');
-    var r = await api('/admin/export/' + APP.year);
-    hideLoading();
-    if (!r.success) { showToast(r.error, 'error'); return; }
-
-    var csv = 'TARAWEEH\nUsername,Year,Date,Completed,Rakaat\n';
-    r.data.taraweeh.forEach(function (row) { csv += row.username + ',' + row.year + ',' + row.date + ',' + row.completed + ',' + row.rakaat + '\n'; });
-    csv += '\nQURAN KHATAMS\nID,Username,Year,Type,Started,Completed,Paras\n';
-    r.data.quran.forEach(function (row) { csv += row.id + ',' + row.username + ',' + row.year + ',' + row.type + ',' + (row.started_at || '') + ',' + (row.completed_at || '') + ',' + row.para_count + '\n'; });
-    csv += '\nFASTING\nUsername,Year,Date,Completed\n';
-    r.data.fasting.forEach(function (row) { csv += row.username + ',' + row.year + ',' + row.date + ',' + row.completed + '\n'; });
-
-    var blob = new Blob([csv], { type: 'text/csv' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'RamadanFlow_' + APP.year + '.csv';
-    a.click();
+    // Auto-focus first focusable element
+    setTimeout(function () {
+        var first = popup.querySelector('button, input, select, textarea');
+        if (first) first.focus();
+    }, 50);
 }
 
 // ===================================================================

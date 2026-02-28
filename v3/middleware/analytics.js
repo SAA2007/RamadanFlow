@@ -7,6 +7,30 @@ const crypto = require('crypto');
 const db = require('../db/database');
 
 // ---------------------------------------------------------------
+// FALSE POSITIVE SUPPRESSION
+// ---------------------------------------------------------------
+
+var ANOMALY_SUPPRESS_RULES = {
+    // headless_browser with only no_plugins flag — Chrome has no plugins by default
+    headless_single_noplugins: function (type, details) {
+        if (type === 'headless_browser' && details && details.flags && details.flags.length === 1 && details.flags[0] === 'no_plugins') return true;
+        return false;
+    },
+    // parameter_tampering on admin routes — admin UI sends custom fields
+    admin_param_tampering: function (type, details) {
+        if (type === 'parameter_tampering' && details && details.route && details.route.indexOf('/api/admin') === 0) return true;
+        return false;
+    }
+};
+
+function shouldSuppressAnomaly(type, details) {
+    for (var key in ANOMALY_SUPPRESS_RULES) {
+        if (ANOMALY_SUPPRESS_RULES[key](type, details)) return key;
+    }
+    return false;
+}
+
+// ---------------------------------------------------------------
 // HELPERS
 // ---------------------------------------------------------------
 
@@ -39,11 +63,35 @@ function getCFHeaders(req) {
 
 function logAnomaly(sessionId, userId, username, severity, type, details, ipHash, country) {
     try {
+        // Check suppression rules
+        var suppressReason = shouldSuppressAnomaly(type, details);
+        if (suppressReason === 'admin_param_tampering') return; // fully suppress
+        if (suppressReason === 'headless_single_noplugins') {
+            severity = 'LOW';
+            if (!details) details = {};
+            details.suppressed = true;
+            details.suppress_reason = 'single_no_plugins_flag';
+        }
+        // headless_browser: only MEDIUM+ if 2+ flags
+        if (type === 'headless_browser' && details && details.flags && details.flags.length < 2 && !suppressReason) {
+            severity = 'LOW';
+        }
         db.prepare(`INSERT INTO analytics_anomalies (session_id, user_id, username, severity, anomaly_type, details, ip_hash, cf_ip_country)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(sessionId, userId, username, severity, type, JSON.stringify(details), ipHash, country);
         if (severity === 'HIGH') {
             console.error('[ANALYTICS ALERT] HIGH severity anomaly:', type, '-', username || 'anonymous', '-', JSON.stringify(details));
         }
+    } catch (e) { /* silent */ }
+}
+
+// ---------------------------------------------------------------
+// REQUEST LOGGING (for live request log)
+// ---------------------------------------------------------------
+
+function logRequest(method, route, username, statusCode, responseMs, country, userAgent) {
+    try {
+        db.prepare('INSERT INTO analytics_requests (method, route, username, status_code, response_ms, cf_country, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+            method, route, username || null, statusCode || 0, responseMs || 0, country || '', userAgent || '');
     } catch (e) { /* silent */ }
 }
 
@@ -143,11 +191,15 @@ function analyticsMiddleware(req, res, next) {
             }
         }
 
-        // --- Slow Request Detection ---
+        // --- Slow Request + Request Logging ---
         var originalEnd = res.end;
         res.end = function () {
             try {
                 var elapsed = Date.now() - startTime;
+                // Log request for live feed (skip static files)
+                if (req.path.indexOf('/api/') === 0) {
+                    logRequest(req.method, req.path, req.user ? req.user.username : null, res.statusCode, elapsed, cf.country, req.headers['user-agent'] || '');
+                }
                 if (elapsed > 2000) {
                     logAnomaly(sessionId, req.user ? req.user.id : null, req.user ? req.user.username : null,
                         'LOW', 'slow_request',
