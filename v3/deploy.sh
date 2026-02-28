@@ -1,8 +1,9 @@
 #!/bin/bash
 # ===================================================================
-# RamadanFlow v3.RC1 — Automated Deployment Script
+# RamadanFlow v3.1.0 — Automated Deployment Script
 # Targets: Raspberry Pi / CasaOS / Any Debian-based Linux
 # Usage:   chmod +x deploy.sh && ./deploy.sh
+#          chmod +x deploy.sh && ./deploy.sh --fresh   (wipes DB)
 # ===================================================================
 
 set -e
@@ -11,9 +12,17 @@ GREEN='\033[0;32m'
 GOLD='\033[0;33m'
 NC='\033[0m'
 
+FRESH=0
+if [ "$1" = "--fresh" ]; then
+    FRESH=1
+fi
+
 echo ""
-echo -e "${GOLD}🕌 RamadanFlow v3.RC1 — Deployment Script${NC}"
+echo -e "${GOLD}🕌 RamadanFlow v3.1.0 — Deployment Script${NC}"
 echo "─────────────────────────────────────────"
+if [ "$FRESH" = "1" ]; then
+    echo -e "${RED}   ⚠️  FRESH MODE — database will be wiped!${NC}"
+fi
 echo ""
 
 # -------------------------------------------------------------------
@@ -95,6 +104,16 @@ echo -e "${GREEN}✅ data/ directory ready${NC}"
 echo ""
 
 # -------------------------------------------------------------------
+# 6b. Fresh DB wipe (only with --fresh flag)
+# -------------------------------------------------------------------
+if [ "$FRESH" = "1" ]; then
+    echo -e "${GOLD}🗑  Wiping database (--fresh mode)...${NC}"
+    rm -f data/ramadanflow.db data/ramadanflow.db-wal data/ramadanflow.db-shm
+    echo -e "${GREEN}✅ Database files deleted — will be recreated on startup${NC}"
+    echo ""
+fi
+
+# -------------------------------------------------------------------
 # 7. Set executable flag on this script
 # -------------------------------------------------------------------
 chmod +x "$0"
@@ -156,7 +175,7 @@ echo ""
 # 10. Done
 # -------------------------------------------------------------------
 echo "─────────────────────────────────────────"
-echo -e "${GREEN}🕌 RamadanFlow v3.RC1 is deployed!${NC}"
+echo -e "${GREEN}🕌 RamadanFlow v3.1.0 is deployed!${NC}"
 echo ""
 echo "   Status:  pm2 status"
 echo "   Logs:    pm2 logs ramadanflow"
