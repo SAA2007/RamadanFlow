@@ -420,17 +420,17 @@ function applyAnomalyFilters() {
         if (user && (!a.username || a.username.toLowerCase().indexOf(user) < 0)) return false;
         return true;
     });
-    var html = '<table class="admin-table"><thead><tr><th>Severity</th><th>Type</th><th>User</th><th>Details</th><th>Time</th></tr></thead><tbody>';
+    var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table"><thead><tr><th>Severity</th><th>Type</th><th>User</th><th>Details</th><th>Time</th></tr></thead><tbody>';
     filtered.forEach(function (a) {
         var details = '';
         try { details = JSON.stringify(JSON.parse(a.details || '{}'), null, 0).substring(0, 80); } catch (e) { details = a.details || ''; }
         html += '<tr><td><span class="severity-badge severity-' + a.severity + '">' + a.severity + '</span></td>'
-            + '<td>' + (a.anomaly_type || '') + '</td>'
-            + '<td>' + (a.username || '\u2014') + '</td>'
-            + '<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + details + '</td>'
+            + '<td style="white-space:nowrap">' + (a.anomaly_type || '') + '</td>'
+            + '<td style="white-space:nowrap">' + (a.username || '\u2014') + '</td>'
+            + '<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (details).replace(/"/g, '&quot;') + '">' + details + '</td>'
             + '<td style="font-size:11px;white-space:nowrap">' + (a.created_at || '').substring(0, 16) + '</td></tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     if (filtered.length === 0) html = '<p style="color:var(--text-muted);font-size:13px">No anomalies found.</p>';
     document.getElementById('anomalyFeed').innerHTML = html;
 }
@@ -473,7 +473,7 @@ async function loadHoneypot() {
         if (!data.success) return;
         var hits = data.hits || [];
         if (hits.length === 0) { document.getElementById('honeypotLog').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No honeypot hits.</p>'; return; }
-        var html = '<table class="admin-table"><thead><tr><th>Route</th><th>IP Hash</th><th>User Agent</th><th>Time</th></tr></thead><tbody>';
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table"><thead><tr><th>Route</th><th>IP Hash</th><th>User Agent</th><th>Time</th></tr></thead><tbody>';
         hits.forEach(function (h) {
             var ua = h.user_agent || '';
             if (ua.indexOf('curl') >= 0) ua = '\uD83D\uDD27 curl';
@@ -482,9 +482,9 @@ async function loadHoneypot() {
             else if (ua.indexOf('Chrome') >= 0) ua = '\uD83C\uDF10 Chrome';
             else if (ua.indexOf('Firefox') >= 0) ua = '\uD83E\uDD8A Firefox';
             else if (ua.length > 40) ua = ua.substring(0, 40) + '\u2026';
-            html += '<tr><td>' + (h.route || '') + '</td><td style="font-size:11px">' + (h.ip_hash || '') + '</td><td style="font-size:11px">' + ua + '</td><td style="font-size:11px;white-space:nowrap">' + (h.created_at || '').substring(0, 16) + '</td></tr>';
+            html += '<tr><td style="white-space:nowrap">' + (h.route || '') + '</td><td style="font-size:11px;white-space:nowrap">' + (h.ip_hash || '') + '</td><td style="font-size:11px;white-space:nowrap">' + ua + '</td><td style="font-size:11px;white-space:nowrap">' + (h.created_at || '').substring(0, 16) + '</td></tr>';
         });
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         document.getElementById('honeypotLog').innerHTML = html;
     } catch (e) { }
 }
@@ -496,12 +496,12 @@ async function loadFingerprints() {
         if (!data.success) return;
         var scores = data.scores || [];
         if (scores.length === 0) { document.getElementById('fingerprintScores').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No fingerprint data.</p>'; return; }
-        var html = '<table class="admin-table"><thead><tr><th>User</th><th>Unique FPs</th><th>Sessions</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody>';
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table"><thead><tr><th>User</th><th>Unique FPs</th><th>Sessions</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody>';
         scores.forEach(function (s) {
             var row = s.unique_fps > 3 ? ' style="background:rgba(243,156,18,0.08)"' : '';
-            html += '<tr' + row + '><td>' + s.username + '</td><td>' + s.unique_fps + (s.unique_fps > 3 ? ' \u26A0\uFE0F' : '') + '</td><td>' + s.total_sessions + '</td><td style="font-size:11px">' + (s.first_seen || '').substring(0, 10) + '</td><td style="font-size:11px">' + (s.last_seen || '').substring(0, 10) + '</td></tr>';
+            html += '<tr' + row + '><td style="white-space:nowrap">' + s.username + '</td><td>' + s.unique_fps + (s.unique_fps > 3 ? ' \u26A0\uFE0F' : '') + '</td><td>' + s.total_sessions + '</td><td style="font-size:11px;white-space:nowrap">' + (s.first_seen || '').substring(0, 10) + '</td><td style="font-size:11px;white-space:nowrap">' + (s.last_seen || '').substring(0, 10) + '</td></tr>';
         });
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         document.getElementById('fingerprintScores').innerHTML = html;
     } catch (e) { }
 }
@@ -513,17 +513,17 @@ async function loadTypingBaseline() {
         if (!fpData.success) return;
         var users = (fpData.scores || []).map(function (s) { return s.username; });
         if (users.length === 0) { document.getElementById('typingBaseline').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No typing data.</p>'; return; }
-        var html = '<table class="admin-table"><thead><tr><th>User</th><th>Baseline Dwell</th><th>Baseline Flight</th><th>Flagged</th></tr></thead><tbody>';
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table"><thead><tr><th>User</th><th>Baseline Dwell</th><th>Baseline Flight</th><th>Flagged</th></tr></thead><tbody>';
         for (var i = 0; i < Math.min(users.length, 10); i++) {
             try {
                 var tData = await api('/analytics/typing/' + users[i]);
                 if (tData.success && tData.profiles && tData.profiles.length > 0) {
                     var latest = tData.profiles[0];
-                    html += '<tr><td>' + users[i] + '</td><td>' + Math.round(latest.baseline_dwell || 0) + 'ms</td><td>' + Math.round(latest.baseline_flight || 0) + 'ms</td><td>' + (latest.flagged ? '\uD83D\uDEA9 ' + Math.round(latest.deviation_pct) + '%' : '\u2713') + '</td></tr>';
+                    html += '<tr><td style="white-space:nowrap">' + users[i] + '</td><td>' + Math.round(latest.baseline_dwell || 0) + 'ms</td><td>' + Math.round(latest.baseline_flight || 0) + 'ms</td><td>' + (latest.flagged ? '\uD83D\uDEA9 ' + Math.round(latest.deviation_pct) + '%' : '\u2713') + '</td></tr>';
                 }
             } catch (e) { }
         }
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         document.getElementById('typingBaseline').innerHTML = html;
     } catch (e) { }
 }
@@ -535,20 +535,20 @@ async function loadLiveRequestLog() {
         if (!data.success) return;
         var reqs = data.requests || [];
         if (reqs.length === 0) { document.getElementById('liveRequestLog').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No requests logged yet.</p>'; return; }
-        var html = '<table class="admin-table"><thead><tr><th>Time</th><th>Method</th><th>Route</th><th>User</th><th>Status</th><th>ms</th><th>\uD83C\uDF0D</th></tr></thead><tbody>';
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table"><thead><tr><th>Time</th><th>Method</th><th>Route</th><th>User</th><th>Status</th><th>ms</th><th>\uD83C\uDF0D</th></tr></thead><tbody>';
         reqs.forEach(function (r) {
             var ms = r.response_ms || 0;
             var rtClass = ms < 200 ? 'rt-fast' : ms < 1000 ? 'rt-medium' : 'rt-slow';
             var flag = r.cf_country ? getFlagEmoji(r.cf_country) : '';
             html += '<tr><td style="font-size:11px;white-space:nowrap">' + (r.created_at || '').substring(11, 19) + '</td>'
                 + '<td><strong>' + (r.method || '') + '</strong></td>'
-                + '<td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis">' + (r.route || '') + '</td>'
-                + '<td>' + (r.username || '\u2014') + '</td>'
+                + '<td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (r.route || '').replace(/"/g, '&quot;') + '">' + (r.route || '') + '</td>'
+                + '<td style="white-space:nowrap">' + (r.username || '\u2014') + '</td>'
                 + '<td>' + (r.status_code || '') + '</td>'
                 + '<td class="' + rtClass + '" style="font-weight:600">' + ms + '</td>'
                 + '<td>' + flag + '</td></tr>';
         });
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         document.getElementById('liveRequestLog').innerHTML = html;
     } catch (e) { /* silent */ }
 }

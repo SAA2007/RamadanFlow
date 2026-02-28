@@ -576,7 +576,6 @@ img,
 video,
 canvas,
 svg,
-table,
 iframe {
     max-width: 100%;
 }
@@ -618,7 +617,7 @@ body.scroll-locked {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg, 0 8px 32px rgba(0,0,0,0.3));
+    box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.3));
     padding: 16px;
     max-width: 360px;
     min-width: 260px;
@@ -666,13 +665,25 @@ body.scroll-locked {
 }
 
 @keyframes popIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* ---------------------------------------------------------------
@@ -722,7 +733,6 @@ body.scroll-locked {
     margin-bottom: 12px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    overflow: hidden;
 }
 
 .admin-section-header {
@@ -770,7 +780,7 @@ body.scroll-locked {
 .admin-section-body {
     padding: 16px;
     background: var(--bg-card);
-    overflow: hidden;
+    overflow: visible;
     transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
@@ -846,10 +856,25 @@ body.scroll-locked {
     letter-spacing: 0.3px;
 }
 
-.tag-admin { background: rgba(201, 168, 76, 0.2); color: var(--gold); }
-.tag-user { background: rgba(52, 152, 219, 0.2); color: #3498db; }
-.tag-frozen { background: rgba(52, 152, 219, 0.2); color: #3498db; }
-.tag-multiplier { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+.tag-admin {
+    background: rgba(201, 168, 76, 0.2);
+    color: var(--gold);
+}
+
+.tag-user {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
+.tag-frozen {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
+.tag-multiplier {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
 
 .user-card-score {
     font-size: 13px;
@@ -887,7 +912,7 @@ body.scroll-locked {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     z-index: 100;
     min-width: 220px;
     padding: 6px 0;
@@ -928,14 +953,16 @@ body.scroll-locked {
 .user-card-inline {
     margin-top: 10px;
     padding: 10px 12px;
-    background: rgba(0,0,0,0.15);
+    background: rgba(0, 0, 0, 0.15);
     border-radius: var(--radius-sm);
     font-size: 13px;
     color: var(--text-secondary);
     display: none;
 }
 
-.user-card-inline.show { display: block; }
+.user-card-inline.show {
+    display: block;
+}
 
 /* ---------------------------------------------------------------
    ADMIN — ANOMALY / SECURITY TABLES
@@ -950,9 +977,20 @@ body.scroll-locked {
     text-transform: uppercase;
 }
 
-.severity-HIGH { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-.severity-MEDIUM { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
-.severity-LOW { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+.severity-HIGH {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+.severity-MEDIUM {
+    background: rgba(243, 156, 18, 0.2);
+    color: #f39c12;
+}
+
+.severity-LOW {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
 
 .admin-filter-bar {
     display: flex;
@@ -999,17 +1037,33 @@ body.scroll-locked {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 /* Request log color coding */
-.rt-fast { color: #2ecc71; }
-.rt-medium { color: #f39c12; }
-.rt-slow { color: #e74c3c; }
+.rt-fast {
+    color: #2ecc71;
+}
+
+.rt-medium {
+    color: #f39c12;
+}
+
+.rt-slow {
+    color: #e74c3c;
+}
 
 .admin-table {
     width: 100%;
+    min-width: 500px;
     border-collapse: collapse;
     font-size: 12px;
 }
@@ -1028,12 +1082,12 @@ body.scroll-locked {
 
 .admin-table td {
     padding: 8px 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     color: var(--text-primary);
 }
 
 .admin-table tr:hover td {
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 /* ---------------------------------------------------------------
@@ -1049,7 +1103,9 @@ body.scroll-locked {
     flex-wrap: wrap;
 }
 
-.ramadan-region-row:last-child { border-bottom: none; }
+.ramadan-region-row:last-child {
+    border-bottom: none;
+}
 
 .ramadan-source-badge {
     font-size: 10px;
@@ -1058,9 +1114,20 @@ body.scroll-locked {
     font-weight: 600;
 }
 
-.source-admin { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-.source-override { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
-.source-api { background: rgba(149, 165, 166, 0.2); color: #95a5a6; }
+.source-admin {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+
+.source-override {
+    background: rgba(243, 156, 18, 0.2);
+    color: #f39c12;
+}
+
+.source-api {
+    background: rgba(149, 165, 166, 0.2);
+    color: #95a5a6;
+}
 
 /* ---------------------------------------------------------------
    ADMIN — TOOLS GRID
@@ -1098,9 +1165,21 @@ body.scroll-locked {
     animation: fadeIn 0.15s ease;
 }
 
-.action-status.show { display: block; }
-.action-status.success { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); }
-.action-status.error { background: rgba(231, 76, 60, 0.1); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.2); }
+.action-status.show {
+    display: block;
+}
+
+.action-status.success {
+    background: rgba(46, 204, 113, 0.1);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.2);
+}
+
+.action-status.error {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.2);
+}
 
 /* ---------------------------------------------------------------
    ADMIN — MOBILE OVERRIDES
