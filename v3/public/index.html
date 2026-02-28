@@ -510,6 +510,11 @@
                             </select>
                             <input type="text" id="anomalyFilterUser" placeholder="Username..."
                                 oninput="applyAnomalyFilters()">
+                            <input type="date" id="anomalyFilterDateFrom" onchange="applyAnomalyFilters()"
+                                title="From date"
+                                style="padding:6px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px">
+                            <input type="date" id="anomalyFilterDateTo" onchange="applyAnomalyFilters()" title="To date"
+                                style="padding:6px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px">
                             <label class="admin-toggle"><input type="checkbox" id="anomalySuppressToggle"
                                     onchange="loadAnomalies()"> Suppress false positives</label>
                         </div>

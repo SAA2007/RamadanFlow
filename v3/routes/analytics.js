@@ -212,4 +212,28 @@ router.get('/requests', authMiddleware, adminMiddleware, function (req, res) {
     }
 });
 
+// Clear all anomalies
+router.post('/anomalies/clear', authMiddleware, adminMiddleware, function (req, res) {
+    try {
+        const { logAdminAction } = require('../middleware/analytics');
+        var count = db.prepare('SELECT COUNT(*) as c FROM analytics_anomalies').get().c;
+        db.prepare('DELETE FROM analytics_anomalies').run();
+        logAdminAction(req.user.username, 'clear_anomalies', null, null, { cleared: count });
+        res.json({ success: true, message: count + ' anomalies cleared.' });
+    } catch (e) {
+        res.json({ success: false, error: 'Failed to clear anomalies.' });
+    }
+});
+
+// Per-user fingerprint sessions
+router.get('/fingerprints/:username', authMiddleware, adminMiddleware, function (req, res) {
+    try {
+        var rows = db.prepare('SELECT session_id, fingerprint_hash, canvas_hash, webgl_hash, user_agent, cf_ip_country, created_at FROM analytics_fingerprints WHERE username = ? ORDER BY created_at DESC LIMIT 20')
+            .all(req.params.username);
+        res.json({ success: true, sessions: rows });
+    } catch (e) {
+        res.json({ success: false, error: 'Failed to load fingerprint sessions.' });
+    }
+});
+
 module.exports = router;

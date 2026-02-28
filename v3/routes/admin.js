@@ -5,10 +5,21 @@ const { logAdminAction } = require('../middleware/analytics');
 
 const router = express.Router();
 
-// GET /api/admin/users — returns all users with metadata
+// GET /api/admin/users — returns all users with metadata + score
 router.get('/users', (req, res) => {
     try {
         const users = db.prepare('SELECT username, email, role, gender, age, score_multiplier, frozen, session_invalidated_at, created_at as created FROM users ORDER BY created_at').all();
+        const year = new Date().getFullYear();
+        users.forEach(u => {
+            let entries = 0;
+            try {
+                entries += db.prepare('SELECT COUNT(*) as c FROM taraweeh WHERE username = ? AND year = ?').get(u.username, year).c;
+                entries += db.prepare('SELECT COUNT(*) as c FROM fasting WHERE username = ? AND year = ?').get(u.username, year).c;
+                entries += db.prepare("SELECT COUNT(*) as c FROM azkar WHERE username = ? AND date LIKE ?").get(u.username, year + '%').c;
+                entries += db.prepare("SELECT COUNT(*) as c FROM namaz WHERE username = ? AND date LIKE ?").get(u.username, year + '%').c;
+            } catch (e) { }
+            u.score = entries;
+        });
         res.json({ success: true, users });
     } catch (err) {
         console.error('Admin get users error:', err);

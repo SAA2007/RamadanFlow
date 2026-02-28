@@ -168,21 +168,33 @@ function toggleUserMenu(username) {
 
     if (menu.style.display === 'none' || !menu.style.display) {
         var u = adminAllUsers.find(function (x) { return x.username === username; }) || {};
-        menu.innerHTML = '<button class="action-dropdown-item" onclick="revealPassword(\'' + username + '\')">\uD83D\uDC41 Reveal password</button>'
-            + '<button class="action-dropdown-item" onclick="openDataEditor(\'' + username + '\')">\uD83D\uDCDD Edit data</button>'
-            + '<button class="action-dropdown-item" onclick="promptMultiplier(\'' + username + '\', ' + (u.score_multiplier || 1.0) + ')">\u26A1 Set multiplier</button>'
-            + '<div class="action-dropdown-sep"></div>'
-            + '<button class="action-dropdown-item" onclick="impersonateUser(\'' + username + '\')">\uD83D\uDC64 Impersonate</button>'
-            + '<button class="action-dropdown-item" onclick="forceReLogin(\'' + username + '\')">\uD83D\uDD11 Force re-login</button>'
-            + '<button class="action-dropdown-item" onclick="toggleFreeze(\'' + username + '\', ' + (u.frozen ? 0 : 1) + ')">' + (u.frozen ? '\uD83D\uDD13 Unfreeze score' : '\u2744\uFE0F Freeze score') + '</button>'
-            + '<button class="action-dropdown-item" onclick="adminToggleRole(\'' + username + '\', \'' + (u.role === 'admin' ? 'user' : 'admin') + '\')">' + (u.role === 'admin' ? '\u2B07 Demote to user' : '\u2B06 Promote to admin') + '</button>'
-            + '<div class="action-dropdown-sep"></div>'
-            + '<button class="action-dropdown-item danger" onclick="adminDeleteUsr(\'' + username + '\')">\uD83D\uDDD1 Delete user</button>';
+        var items = [
+            { label: '\uD83D\uDC41 Reveal password', fn: 'revealPassword' },
+            { label: '\uD83D\uDD10 Reset password', fn: 'adminResetPw' },
+            { label: '\uD83D\uDCDD Edit data', fn: 'openDataEditor' },
+            { label: '\uD83D\uDCE5 Export data', fn: 'exportUserData' },
+            { label: '\u26A1 Set multiplier', fn: 'promptMultiplier', args: ', ' + (u.score_multiplier || 1.0) },
+            { sep: true },
+            { label: '\uD83D\uDC64 Impersonate', fn: 'impersonateUser' },
+            { label: '\uD83D\uDCCA View analytics', fn: 'viewUserAnomalies' },
+            { label: '\uD83D\uDD11 Force re-login', fn: 'forceReLogin' },
+            { label: (u.frozen ? '\uD83D\uDD13 Unfreeze score' : '\u2744\uFE0F Freeze score'), fn: 'toggleFreeze', args: ', ' + (u.frozen ? 0 : 1) },
+            { label: (u.role === 'admin' ? '\u2B07 Demote to user' : '\u2B06 Promote to admin'), fn: 'adminToggleRole', args: ", '" + (u.role === 'admin' ? 'user' : 'admin') + "'" },
+            { sep: true },
+            { label: '\uD83D\uDDD1 Delete user', fn: 'adminDeleteUsr', danger: true }
+        ];
+        var html = '';
+        items.forEach(function (item) {
+            if (item.sep) { html += '<div class="action-dropdown-sep"></div>'; return; }
+            html += '<button class="action-dropdown-item' + (item.danger ? ' danger' : '') + '" onclick="' + item.fn + '(\'' + username + '\'' + (item.args || '') + ')">' + item.label + '</button>';
+        });
+        menu.innerHTML = html;
         menu.style.display = 'block';
     } else {
         menu.style.display = 'none';
     }
 }
+
 
 // Close menus on outside click
 document.addEventListener('click', function (e) {
@@ -272,7 +284,7 @@ async function adminToggleRole(username, newRole) {
         showCardStatus(username, 'Cannot change your own role', 'error'); return;
     }
     try {
-        var data = await api('/admin/change-role', { method: 'POST', body: { username: username, role: newRole } });
+        var data = await api('/admin/change-role', { method: 'POST', body: { targetUsername: username, newRole: newRole } });
         if (data.success) { showCardStatus(username, '\u2705 Role changed to ' + newRole, 'success'); loadAdmin(); }
         else showCardStatus(username, data.error || 'Failed', 'error');
     } catch (e) { showCardStatus(username, 'Request failed', 'error'); }
@@ -283,7 +295,7 @@ function adminDeleteUsr(username) {
     var now = Date.now();
     if (adminDeletePending[username] && now - adminDeletePending[username] < 5000) {
         delete adminDeletePending[username];
-        api('/admin/delete-user', { method: 'POST', body: { username: username } }).then(function (data) {
+        api('/admin/delete-user', { method: 'POST', body: { targetUsername: username } }).then(function (data) {
             if (data.success) { showToast('\uD83D\uDDD1 User ' + username + ' deleted', 'success'); loadAdmin(); }
             else showCardStatus(username, data.error || 'Failed', 'error');
         }).catch(function () { showCardStatus(username, 'Request failed', 'error'); });
@@ -294,12 +306,47 @@ function adminDeleteUsr(username) {
 }
 
 function adminResetPw(username) {
+    document.querySelectorAll('.action-dropdown').forEach(function (m) { m.style.display = 'none'; });
     var pw = prompt('New password for ' + username + ':');
-    if (!pw || pw.length < 4) return;
-    api('/admin/reset-password', { method: 'POST', body: { username: username, newPassword: pw } }).then(function (data) {
+    if (!pw || pw.length < 4) { if (pw !== null) showCardStatus(username, 'Password must be 4+ chars', 'error'); return; }
+    api('/admin/reset-password', { method: 'POST', body: { targetUsername: username, newPassword: pw } }).then(function (data) {
         if (data.success) showCardStatus(username, '\u2705 Password reset', 'success');
         else showCardStatus(username, data.error || 'Failed', 'error');
     }).catch(function () { showCardStatus(username, 'Request failed', 'error'); });
+}
+
+// Issue 9: View user anomalies
+function viewUserAnomalies(username) {
+    document.querySelectorAll('.action-dropdown').forEach(function (m) { m.style.display = 'none'; });
+    var userAnomalies = adminAnomalyCache.filter(function (a) { return a.username === username; });
+    var inline = document.getElementById('inline-' + username);
+    if (!inline) return;
+    if (userAnomalies.length === 0) {
+        inline.innerHTML = '\u2705 No anomalies for this user';
+    } else {
+        var html = '<strong>' + userAnomalies.length + ' anomalies:</strong><br>';
+        userAnomalies.slice(0, 5).forEach(function (a) {
+            html += '<span class="severity-badge severity-' + a.severity + '" style="font-size:10px;margin:2px">' + a.severity + '</span> ' + a.anomaly_type + '<br>';
+        });
+        if (userAnomalies.length > 5) html += '...and ' + (userAnomalies.length - 5) + ' more';
+        inline.innerHTML = html;
+    }
+    inline.classList.add('show');
+}
+
+// Issue 10: Export single user data
+async function exportUserData(username) {
+    document.querySelectorAll('.action-dropdown').forEach(function (m) { m.style.display = 'none'; });
+    try {
+        var data = await api('/admin/user-data/' + username + '/' + APP.year);
+        if (!data.success) { showCardStatus(username, 'Export failed', 'error'); return; }
+        var blob = new Blob([JSON.stringify(data.data || {}, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = username + '_data_' + APP.year + '.json';
+        a.click();
+        showCardStatus(username, '\uD83D\uDCE5 Data exported', 'success');
+    } catch (e) { showCardStatus(username, 'Export failed', 'error'); }
 }
 
 // --- Announcement ---
@@ -330,7 +377,7 @@ async function saveAdminRegion() {
     var val = document.getElementById('adminRegionSelect').value;
     var parts = val.split(',');
     var data = await api('/ramadan/region', { method: 'POST', body: { country: parts[0], city: parts[1] } });
-    if (data.success) { showToast('\uD83C\uDF0D Region saved: ' + val, 'success'); loadMultiRegionTracker(); }
+    if (data.success) { showToast('\uD83C\uDF0D Region saved: ' + val, 'success'); if (typeof loadMultiRegionTracker === 'function') loadMultiRegionTracker(); }
     else showToast(data.error || 'Failed', 'error');
 }
 
@@ -374,7 +421,7 @@ async function saveAdminDate(region) {
     if (!date) { showToast('Select a date first', 'error'); return; }
     try {
         var data = await api('/ramadan/admin-dates', { method: 'POST', body: { year: APP.year, region: region, date: date, note: note, notify: notify } });
-        if (data.success) { showToast('\uD83D\uDCC5 ' + data.message, 'success'); loadAdminRamadanDates(); loadMultiRegionTracker(); }
+        if (data.success) { showToast('\uD83D\uDCC5 ' + data.message, 'success'); loadAdminRamadanDates(); if (typeof loadMultiRegionTracker === 'function') loadMultiRegionTracker(); }
         else showToast(data.error || 'Failed', 'error');
     } catch (e) { showToast('Request failed', 'error'); }
 }
@@ -382,7 +429,7 @@ async function saveAdminDate(region) {
 async function clearAdminDate(region) {
     try {
         var data = await api('/ramadan/admin-dates/clear', { method: 'POST', body: { year: APP.year, region: region } });
-        if (data.success) { showToast('\uD83D\uDCC5 ' + data.message, 'success'); loadAdminRamadanDates(); loadMultiRegionTracker(); }
+        if (data.success) { showToast('\uD83D\uDCC5 ' + data.message, 'success'); loadAdminRamadanDates(); if (typeof loadMultiRegionTracker === 'function') loadMultiRegionTracker(); }
         else showToast(data.error || 'Failed', 'error');
     } catch (e) { showToast('Request failed', 'error'); }
 }
@@ -414,10 +461,14 @@ function applyAnomalyFilters() {
     var severity = (document.getElementById('anomalyFilterSeverity') || {}).value || '';
     var type = (document.getElementById('anomalyFilterType') || {}).value || '';
     var user = ((document.getElementById('anomalyFilterUser') || {}).value || '').toLowerCase();
+    var dateFrom = (document.getElementById('anomalyFilterDateFrom') || {}).value || '';
+    var dateTo = (document.getElementById('anomalyFilterDateTo') || {}).value || '';
     var filtered = adminAnomalyCache.filter(function (a) {
         if (severity && a.severity !== severity) return false;
         if (type && a.anomaly_type !== type) return false;
         if (user && (!a.username || a.username.toLowerCase().indexOf(user) < 0)) return false;
+        if (dateFrom && (a.created_at || '') < dateFrom) return false;
+        if (dateTo && (a.created_at || '').substring(0, 10) > dateTo) return false;
         return true;
     });
     var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table"><thead><tr><th>Severity</th><th>Type</th><th>User</th><th>Details</th><th>Time</th></tr></thead><tbody>';
@@ -461,9 +512,13 @@ function exportAnomaliesCSV() {
     a2.click();
 }
 
-function clearAllAnomalies() {
+async function clearAllAnomalies() {
     if (!confirm('Clear ALL anomalies? This cannot be undone.')) return;
-    showToast('Bulk clear not yet implemented on backend.', 'error');
+    try {
+        var data = await api('/analytics/anomalies/clear', { method: 'POST', body: {} });
+        if (data.success) { showToast('\u2705 ' + data.message, 'success'); adminAnomalyCache = []; applyAnomalyFilters(); }
+        else showToast(data.error || 'Failed', 'error');
+    } catch (e) { showToast('Clear failed', 'error'); }
 }
 
 // --- Honeypot ---
@@ -498,11 +553,30 @@ async function loadFingerprints() {
         if (scores.length === 0) { document.getElementById('fingerprintScores').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No fingerprint data.</p>'; return; }
         var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="admin-table"><thead><tr><th>User</th><th>Unique FPs</th><th>Sessions</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody>';
         scores.forEach(function (s) {
-            var row = s.unique_fps > 3 ? ' style="background:rgba(243,156,18,0.08)"' : '';
-            html += '<tr' + row + '><td style="white-space:nowrap">' + s.username + '</td><td>' + s.unique_fps + (s.unique_fps > 3 ? ' \u26A0\uFE0F' : '') + '</td><td>' + s.total_sessions + '</td><td style="font-size:11px;white-space:nowrap">' + (s.first_seen || '').substring(0, 10) + '</td><td style="font-size:11px;white-space:nowrap">' + (s.last_seen || '').substring(0, 10) + '</td></tr>';
+            var row = s.unique_fps > 3 ? ' style="background:rgba(243,156,18,0.08);cursor:pointer"' : ' style="cursor:pointer"';
+            html += '<tr' + row + ' onclick="expandFingerprint(\'' + s.username + '\', this)"><td style="white-space:nowrap">' + s.username + '</td><td>' + s.unique_fps + (s.unique_fps > 3 ? ' \u26A0\uFE0F' : '') + '</td><td>' + s.total_sessions + '</td><td style="font-size:11px;white-space:nowrap">' + (s.first_seen || '').substring(0, 10) + '</td><td style="font-size:11px;white-space:nowrap">' + (s.last_seen || '').substring(0, 10) + '</td></tr>';
         });
         html += '</tbody></table></div>';
         document.getElementById('fingerprintScores').innerHTML = html;
+    } catch (e) { }
+}
+
+async function expandFingerprint(username, row) {
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('fp-detail-row')) { next.remove(); return; }
+    try {
+        var data = await api('/analytics/fingerprints/' + username);
+        if (!data.success || !data.sessions || data.sessions.length === 0) return;
+        var html = '<td colspan="5" style="padding:8px 16px;background:rgba(255,255,255,0.02);font-size:11px">';
+        html += '<strong>Sessions for ' + username + ':</strong><br>';
+        data.sessions.forEach(function (s) {
+            html += '<div style="margin:2px 0">' + (s.created_at || '').substring(0, 16) + ' \u2014 FP: <code>' + (s.fingerprint_hash || '').substring(0, 12) + '</code> \u2014 ' + (s.user_agent || '').substring(0, 40) + (s.cf_ip_country ? ' ' + s.cf_ip_country : '') + '</div>';
+        });
+        html += '</td>';
+        var detailRow = document.createElement('tr');
+        detailRow.className = 'fp-detail-row';
+        detailRow.innerHTML = html;
+        row.after(detailRow);
     } catch (e) { }
 }
 
@@ -584,20 +658,28 @@ function openDataEditor(username) {
         var modal = document.getElementById('dataEditorModal');
         document.getElementById('dataEditorTitle').textContent = '\uD83D\uDCDD Edit Data \u2014 ' + username;
         APP.editingUsername = username;
+        var userData = data.data || {};
         var html = '';
-        var tables = ['taraweeh', 'fasting', 'azkar', 'namaz', 'quran_progress', 'surah_memorization'];
-        tables.forEach(function (t) {
-            var rows = data[t] || [];
-            html += '<h4 style="color:var(--gold);margin:12px 0 6px">' + t.charAt(0).toUpperCase() + t.slice(1) + ' (' + rows.length + ')</h4>';
+        var tableMap = [
+            { key: 'taraweeh', dbTable: 'taraweeh', label: 'Taraweeh' },
+            { key: 'fasting', dbTable: 'fasting', label: 'Fasting' },
+            { key: 'azkar', dbTable: 'azkar', label: 'Azkar' },
+            { key: 'namaz', dbTable: 'namaz', label: 'Namaz' },
+            { key: 'khatams', dbTable: 'khatams', label: 'Khatams' },
+            { key: 'surah', dbTable: 'surah_memorization', label: 'Surah Memorization' }
+        ];
+        tableMap.forEach(function (tm) {
+            var rows = userData[tm.key] || [];
+            html += '<h4 style="color:var(--gold);margin:12px 0 6px">' + tm.label + ' (' + rows.length + ')</h4>';
             if (rows.length === 0) { html += '<p style="font-size:12px;color:var(--text-muted)">No data</p>'; return; }
             html += '<div style="overflow-x:auto"><table class="admin-table"><thead><tr>';
             var keys = Object.keys(rows[0]).filter(function (k) { return k !== 'id' && k !== 'username'; });
             keys.forEach(function (k) { html += '<th>' + k + '</th>'; });
             html += '</tr></thead><tbody>';
-            rows.forEach(function (row, i) {
+            rows.forEach(function (row) {
                 html += '<tr>';
                 keys.forEach(function (k) {
-                    html += '<td><input type="text" value="' + (row[k] !== null && row[k] !== undefined ? row[k] : '') + '" data-table="' + t + '" data-idx="' + i + '" data-key="' + k + '" style="width:100%;min-width:60px;padding:4px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:3px;color:var(--text-primary);font-size:11px"></td>';
+                    html += '<td><input type="text" value="' + (row[k] !== null && row[k] !== undefined ? row[k] : '') + '" data-table="' + tm.dbTable + '" data-id="' + (row.id || '') + '" data-key="' + k + '" data-orig="' + (row[k] !== null && row[k] !== undefined ? row[k] : '') + '" style="width:100%;min-width:60px;padding:4px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:3px;color:var(--text-primary);font-size:11px"></td>';
                 });
                 html += '</tr>';
             });
@@ -612,18 +694,17 @@ function closeDataEditor() { document.getElementById('dataEditorModal').classLis
 
 async function saveDataEditor() {
     var inputs = document.querySelectorAll('#dataEditorContent input[data-table]');
-    var changes = {};
+    var changes = [];
     inputs.forEach(function (inp) {
-        var t = inp.dataset.table;
-        var idx = parseInt(inp.dataset.idx);
-        var key = inp.dataset.key;
-        if (!changes[t]) changes[t] = {};
-        if (!changes[t][idx]) changes[t][idx] = {};
-        changes[t][idx][key] = inp.value;
+        var orig = inp.dataset.orig;
+        if (inp.value === orig) return;
+        if (!inp.dataset.id) return;
+        changes.push({ type: inp.dataset.table, id: parseInt(inp.dataset.id), field: inp.dataset.key, value: inp.value });
     });
+    if (changes.length === 0) { showToast('No changes detected', 'error'); return; }
     try {
-        var data = await api('/admin/user-data/save', { method: 'POST', body: { username: APP.editingUsername, year: APP.year, data: changes } });
-        if (data.success) { showToast('\u2705 Data saved', 'success'); closeDataEditor(); }
+        var data = await api('/admin/user-data/save', { method: 'POST', body: { username: APP.editingUsername, changes: changes } });
+        if (data.success) { showToast('\u2705 ' + data.message, 'success'); closeDataEditor(); }
         else showToast(data.error || 'Save failed', 'error');
     } catch (e) { showToast('Request failed', 'error'); }
 }
