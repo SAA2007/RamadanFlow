@@ -1,0 +1,7 @@
+node_modules/
+data/
+.env
+debug_passwords.txt
+*.db
+*.db-wal
+*.db-shm

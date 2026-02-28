@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/:year', (req, res) => {
     try {
         const year = parseInt(req.params.year);
-        const users = db.prepare('SELECT username, email, role, created_at FROM users').all();
+        const users = db.prepare('SELECT username, email, role, gender, age, score_multiplier, frozen, created_at FROM users').all();
 
         const summaries = users.map(u => {
             // Taraweeh count, rakaat, & streak
@@ -44,7 +44,7 @@ router.get('/:year', (req, res) => {
             // Azkar — each morning or evening counts as 1 separate instance
             const azkarRows = db.prepare("SELECT morning, evening FROM azkar WHERE username = ? AND date LIKE ?").all(u.username, year + '%');
             let azkarPoints = 0;
-            let azkarCount = 0; // Total days they did at least one
+            let azkarCount = 0;
             azkarRows.forEach(r => {
                 if (r.morning === 1) azkarPoints += 1;
                 if (r.evening === 1) azkarPoints += 1;
@@ -61,17 +61,17 @@ router.get('/:year', (req, res) => {
             let nMosqueMult = 2;
             let nHomeMult = 1;
             if (u.gender === 'Female') {
-                nHomeMult = 2; // Women get equal points for home prayers
+                nHomeMult = 2;
             }
 
             let ageBonus = 0;
             if (u.age) {
-                if (u.age <= 12) ageBonus = 50; // Young child encouragement
-                else if (u.age >= 60) ageBonus = 50; // Elder respect boost
+                if (u.age <= 12) ageBonus = 50;
+                else if (u.age >= 60) ageBonus = 50;
             }
 
             // Score (v3.2 formula - values rakaat > days, incl demographics)
-            const score = Math.floor(
+            const rawScore = Math.floor(
                 (sumRakaat * 1.5) +
                 (totalParas * 5) +
                 (completedKhatams * 50) +
@@ -83,12 +83,18 @@ router.get('/:year', (req, res) => {
                 ageBonus
             );
 
+            // Apply per-user score multiplier
+            const scoreMultiplier = u.score_multiplier || 1.0;
+            const score = Math.floor(rawScore * scoreMultiplier);
+
             return {
                 username: u.username,
                 email: u.email,
                 role: u.role,
                 gender: u.gender,
                 age: u.age,
+                frozen: u.frozen || 0,
+                score_multiplier: scoreMultiplier,
                 taraweehCount,
                 taraweehRakaat: sumRakaat,
                 taraweehAverage,

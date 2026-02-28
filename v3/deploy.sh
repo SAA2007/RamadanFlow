@@ -1,148 +1,171 @@
 #!/bin/bash
-# 🕌 RamadanFlow - Zero-to-Full Production Setup Script
-# Handles: Node.js, PM2, App Setup, Nginx, DuckDNS, and Free SSL (Certbot)
-# Run with: sudo ./deploy.sh
+# ===================================================================
+# RamadanFlow v3.RC1 — Automated Deployment Script
+# Targets: Raspberry Pi / CasaOS / Any Debian-based Linux
+# Usage:   chmod +x deploy.sh && ./deploy.sh
+# ===================================================================
 
 set -e
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+GOLD='\033[0;33m'
+NC='\033[0m'
 
-# ==========================================
-# CONFIGURATION 
-# ==========================================
-read -p "Enter your DuckDNS Domain (e.g. myramadan.duckdns.org): " DOMAIN < /dev/tty
-read -p "Enter your DuckDNS Token (e.g. 94e7...): " DUCKDNS_TOKEN < /dev/tty
-PORT=3000
-APP_DIR="/home/$SUDO_USER/RamadanFlow/v3"
+echo ""
+echo -e "${GOLD}🕌 RamadanFlow v3.RC1 — Deployment Script${NC}"
+echo "─────────────────────────────────────────"
+echo ""
 
-# ==========================================
-# PRE-FLIGHT CHECKS
-# ==========================================
-if [ "$EUID" -ne 0 ]; then
-  echo "❌ Please run this script with sudo: sudo ./deploy.sh"
-  exit 1
-fi
-
-if [ -z "$SUDO_USER" ]; then
-  echo "❌ Could not detect the original user. Please run with 'sudo ./deploy.sh' instead of logging in as root."
-  exit 1
-fi
-
-echo "======================================"
-echo "🚀 RamadanFlow Automated Production Deployment"
-echo "User: $SUDO_USER | Domain: $DOMAIN"
-echo "======================================"
-
-# ==========================================
-# 1. SYSTEM UPDATES & DEPENDENCIES
-# ==========================================
-echo "📦 Updating system packages..."
-apt update && apt upgrade -y
-apt install -y curl wget git nano cron build-essential
-
-
-
-# ==========================================
-# 2. NODE.JS & NPM INSTALLATION (Global)
-# ==========================================
-if ! command -v node >/dev/null 2>&1; then
-    echo "🟩 Installing Node.js LTS..."
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-    apt install -y nodejs
+# -------------------------------------------------------------------
+# 1. Check / Install Node.js (v18+)
+# -------------------------------------------------------------------
+if command -v node &> /dev/null; then
+    NODE_VER=$(node -v | sed 's/v//' | cut -d. -f1)
+    if [ "$NODE_VER" -ge 18 ]; then
+        echo -e "${GREEN}✅ Node.js $(node -v) found${NC}"
+    else
+        echo -e "${RED}⚠️  Node.js $(node -v) is too old. Need v18+${NC}"
+        echo "   Installing Node.js 18..."
+        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    fi
 else
-    echo "✅ Node.js already installed: $(node -v)"
+    echo -e "${GOLD}📦 Node.js not found. Installing v18...${NC}"
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt-get install -y nodejs
 fi
 
-# ==========================================
-# 3. APP SETUP & ENVIRONMENT
-# ==========================================
-echo "⚙️ Setting up application directory..."
-cd "$APP_DIR" || { echo "❌ Could not find $APP_DIR. Did you clone the repo?"; exit 1; }
+echo -e "${GREEN}   Node: $(node -v) | npm: $(npm -v)${NC}"
+echo ""
 
-# Install dependencies as the regular user to prevent permission issues
-sudo -u "$SUDO_USER" npm install || { echo "⚠️ npm install failed, retrying in 5s..."; sleep 5; sudo -u "$SUDO_USER" npm install; } || { echo "⚠️ retrying again..."; sleep 5; sudo -u "$SUDO_USER" npm install; }
+# -------------------------------------------------------------------
+# 2. Install PM2 globally
+# -------------------------------------------------------------------
+if ! command -v pm2 &> /dev/null; then
+    echo -e "${GOLD}📦 Installing PM2...${NC}"
+    sudo npm install -g pm2
+fi
+echo -e "${GREEN}✅ PM2 $(pm2 -v) found${NC}"
+echo ""
 
-# Create SSL folder for Native HTTPS (Option C)
-sudo -u "$SUDO_USER" mkdir -p ssl
+# -------------------------------------------------------------------
+# 3. Navigate to v3 directory
+# -------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+V3_DIR="$SCRIPT_DIR"
 
-# Generate .env if missing
+if [ ! -f "$V3_DIR/server.js" ]; then
+    echo -e "${RED}❌ server.js not found in $V3_DIR${NC}"
+    echo "   Run this script from within the v3/ directory."
+    exit 1
+fi
+
+cd "$V3_DIR"
+echo -e "${GREEN}✅ Working directory: $V3_DIR${NC}"
+echo ""
+
+# -------------------------------------------------------------------
+# 4. Install dependencies
+# -------------------------------------------------------------------
+echo -e "${GOLD}📦 Installing npm dependencies...${NC}"
+npm install --production
+echo -e "${GREEN}✅ Dependencies installed${NC}"
+echo ""
+
+# -------------------------------------------------------------------
+# 5. Generate .env if missing
+# -------------------------------------------------------------------
 if [ ! -f .env ]; then
-    echo "🔑 Generating secure .env file..."
-    SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
-    sudo -u "$SUDO_USER" bash -c "echo 'PORT=$PORT' > .env"
-    sudo -u "$SUDO_USER" bash -c "echo 'JWT_SECRET=$SECRET' >> .env"
-else
-    echo "✅ .env file already exists."
-fi
-
-# ==========================================
-# 4. PM2 PROCESS MANAGER
-# ==========================================
-echo "🔄 Configuring PM2..."
-npm install -g pm2 || { echo "⚠️ pm2 install failed, retrying in 5s..."; sleep 5; npm install -g pm2; } || { echo "⚠️ retrying again..."; sleep 5; npm install -g pm2; }
-
-# Start the app as the standard user
-sudo -u "$SUDO_USER" pm2 start ecosystem.config.js || sudo -u "$SUDO_USER" pm2 restart ecosystem.config.js
-sudo -u "$SUDO_USER" pm2 save
-
-# Setup PM2 to start on boot
-echo "⚙️ Rebuilding PM2 startup script..."
-pm2 unstartup systemd || true
-env PATH=$PATH:/usr/bin pm2 startup systemd -u "$SUDO_USER" --hp "/home/$SUDO_USER"
-
-# ==========================================
-# 5. SSL CERTIFICATE (Native NodeJS via ACME.sh)
-# ==========================================
-echo "🔒 Requesting Free SSL Certificate via DuckDNS API (No Port 80 required)..."
-# Install acme.sh as the user
-sudo -u "$SUDO_USER" bash -c "curl -s https://get.acme.sh | sh -s email=admin@${DOMAIN}" || true
-
-export DuckDNS_Token="$DUCKDNS_TOKEN"
-
-# Issue the certificate using the DNS API plugin for DuckDNS
-sudo -u "$SUDO_USER" bash -c "export DuckDNS_Token=\"$DUCKDNS_TOKEN\"; ~/.acme.sh/acme.sh --issue --dns dns_duckdns -d $DOMAIN --server letsencrypt" || { echo "⚠️ SSL generation failed or already exists."; }
-
-# Install the certificates into the app's ssl directory
-sudo -u "$SUDO_USER" bash -c "~/.acme.sh/acme.sh --install-cert -d $DOMAIN \
---key-file       $APP_DIR/ssl/privkey.pem  \
---fullchain-file $APP_DIR/ssl/fullchain.pem \
---reloadcmd     \"pm2 restart ramadanflow\"" || { echo "⚠️ SSL installation skipped."; }
-
-# ==========================================
-# 6. DUCKDNS DYNAMIC IP CRONJOB
-# ==========================================
-echo "🦆 Configuring DuckDNS auto-updater..."
-
-# Create a manual executable script for DuckDNS
-cat << 'EOF' > "$APP_DIR/update_duckdns.sh"
-#!/bin/bash
-DOMAIN="REPLACE_DOMAIN"
-TOKEN="REPLACE_TOKEN"
-echo "Sending IP update request to DuckDNS..."
-curl -s -k "https://www.duckdns.org/update?domains=${DOMAIN}&token=${TOKEN}&ip="
-echo ""
+    JWT_SECRET=$(openssl rand -hex 32)
+    cat > .env << EOF
+JWT_SECRET=$JWT_SECRET
+PORT=3000
 EOF
-sudo -u "$SUDO_USER" bash -c "sed -i 's/REPLACE_DOMAIN/${DOMAIN%%.duckdns.org}/g' '$APP_DIR/update_duckdns.sh'"
-sudo -u "$SUDO_USER" bash -c "sed -i 's/REPLACE_TOKEN/$DUCKDNS_TOKEN/g' '$APP_DIR/update_duckdns.sh'"
-chmod +x "$APP_DIR/update_duckdns.sh"
-
-CRON_CMD="*/5 * * * * $APP_DIR/update_duckdns.sh >/tmp/duckdns.log 2>&1"
-CRON_BOOT="@reboot sleep 60 && $APP_DIR/update_duckdns.sh >/tmp/duckdns.log 2>&1"
-(crontab -u "$SUDO_USER" -l 2>/dev/null | grep -v "update_duckdns.sh"; echo "$CRON_CMD"; echo "$CRON_BOOT") | crontab -u "$SUDO_USER" -
-
-# Trigger an immediate update
-sudo -u "$SUDO_USER" "$APP_DIR/update_duckdns.sh" >/dev/null 2>&1
-
-echo "======================================"
-echo "🎉 DEPLOYMENT COMPLETE!"
+    echo -e "${GREEN}✅ Generated .env with random JWT_SECRET${NC}"
+else
+    echo -e "${GREEN}✅ .env already exists${NC}"
+fi
 echo ""
-echo "RamadanFlow is running securely on your Pi at:"
-echo "👉 http://localhost:$PORT"
+
+# -------------------------------------------------------------------
+# 6. Ensure data directory exists
+# -------------------------------------------------------------------
+mkdir -p data
+echo -e "${GREEN}✅ data/ directory ready${NC}"
 echo ""
-echo "To access it remotely via DuckDNS ($DOMAIN):"
-echo "1. Log into your WiFi Router."
-echo "2. Port Forward an external 'non-descript' port (e.g., 8443 or 5050)"
-echo "   to your Raspberry Pi's local IP address on Port $PORT."
+
+# -------------------------------------------------------------------
+# 7. Set executable flag on this script
+# -------------------------------------------------------------------
+chmod +x "$0"
+
+# -------------------------------------------------------------------
+# 8. PM2 Setup
+# -------------------------------------------------------------------
+echo -e "${GOLD}🚀 Setting up PM2...${NC}"
+
+# Stop existing instance if running
+pm2 stop ramadanflow 2>/dev/null || true
+pm2 delete ramadanflow 2>/dev/null || true
+
+# Start fresh
+pm2 start server.js --name ramadanflow
+pm2 save
+
+# Generate startup script (auto-start on boot)
 echo ""
-echo "Example: You can then access it at http://$DOMAIN:8443"
-echo "Note: If you run CasaOS, use the 'Cloudflared' or 'Nginx Proxy Manager'"
-echo "CasaOS App to route this port natively."
-echo "======================================"
+echo -e "${GOLD}⚙️  Generating PM2 startup script...${NC}"
+echo "   You may be prompted for your password."
+pm2 startup systemd -u $USER --hp $HOME 2>/dev/null || pm2 startup 2>/dev/null || echo -e "${RED}   ⚠️  Could not auto-generate startup. Run: pm2 startup${NC}"
+pm2 save
+echo -e "${GREEN}✅ PM2 configured — RamadanFlow will auto-start on boot${NC}"
+echo ""
+
+# -------------------------------------------------------------------
+# 9. DuckDNS Helper (optional)
+# -------------------------------------------------------------------
+echo -e "${GOLD}🦆 DuckDNS Setup (optional)${NC}"
+echo "   Skip? Press Enter without typing."
+echo ""
+
+read -p "   DuckDNS subdomain (e.g. myfamily): " DUCK_SUB
+if [ -n "$DUCK_SUB" ]; then
+    read -p "   DuckDNS token: " DUCK_TOKEN
+    if [ -n "$DUCK_TOKEN" ]; then
+        # Create update script
+        cat > ~/duckdns-update.sh << EOF
+#!/bin/bash
+echo url="https://www.duckdns.org/update?domains=$DUCK_SUB&token=$DUCK_TOKEN&ip=" | curl -k -o ~/duckdns.log -K -
+EOF
+        chmod +x ~/duckdns-update.sh
+
+        # Add cron job (every 5 minutes)
+        CRON_LINE="*/5 * * * * ~/duckdns-update.sh >/dev/null 2>&1"
+        (crontab -l 2>/dev/null | grep -v "duckdns-update"; echo "$CRON_LINE") | crontab -
+        echo -e "${GREEN}✅ DuckDNS cron installed — updates every 5 min${NC}"
+        echo "   Testing..."
+        ~/duckdns-update.sh
+        echo -e "   Log: $(cat ~/duckdns.log)"
+    fi
+else
+    echo "   Skipped."
+fi
+echo ""
+
+# -------------------------------------------------------------------
+# 10. Done
+# -------------------------------------------------------------------
+echo "─────────────────────────────────────────"
+echo -e "${GREEN}🕌 RamadanFlow v3.RC1 is deployed!${NC}"
+echo ""
+echo "   Status:  pm2 status"
+echo "   Logs:    pm2 logs ramadanflow"
+echo "   Restart: pm2 restart ramadanflow"
+echo "   Stop:    pm2 stop ramadanflow"
+echo ""
+IP=$(hostname -I | awk '{print $1}')
+echo -e "   Local:   http://${IP}:3000"
+if [ -n "$DUCK_SUB" ]; then
+    echo -e "   DuckDNS: https://${DUCK_SUB}.duckdns.org"
+fi
+echo ""

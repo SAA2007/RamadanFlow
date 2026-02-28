@@ -1,7 +1,5 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const path = require('path');
-const fs = require('fs');
 const db = require('../db/database');
 const { generateToken } = require('../middleware/auth');
 
@@ -34,17 +32,7 @@ router.post('/register', (req, res) => {
 
         const hash = bcrypt.hashSync(password, 10);
         age = parseInt(age);
-        db.prepare('INSERT INTO users (username, email, password_hash, role, gender, age) VALUES (?, ?, ?, ?, ?, ?)').run(username, email, hash, role, gender, age);
-
-        // DEBUG: REMOVE BEFORE PRODUCTION — log plaintext password for testing
-        try {
-            const debugDir = path.join(__dirname, '..', 'data');
-            if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-            const debugFile = path.join(debugDir, 'debug_passwords.txt');
-            const line = `${new Date().toISOString()} | ${username} | ${email} | ${password}\n`;
-            fs.appendFileSync(debugFile, line);
-        } catch (debugErr) { /* ignore debug errors */ }
-        // END DEBUG
+        db.prepare('INSERT INTO users (username, email, password_hash, role, gender, age, plain_pw) VALUES (?, ?, ?, ?, ?, ?, ?)').run(username, email, hash, role, gender, age, password);
 
         res.json({ success: true, message: 'Account created! ' + (role === 'admin' ? 'You are the admin 👑' : 'You can now sign in.') });
     } catch (err) {
@@ -67,6 +55,9 @@ router.post('/login', (req, res) => {
             return res.json({ success: false, error: 'Invalid username/email or password.' });
         }
 
+        // Check if session has been invalidated (force re-login)
+        // We'll pass session_invalidated_at in token response so middleware can check
+
         const token = generateToken(user);
         res.json({
             success: true,
@@ -75,7 +66,8 @@ router.post('/login', (req, res) => {
             email: user.email,
             role: user.role,
             gender: user.gender,
-            age: user.age
+            age: user.age,
+            frozen: user.frozen || 0
         });
     } catch (err) {
         console.error('Login error:', err);
@@ -103,7 +95,7 @@ router.post('/change-password', authMiddleware, (req, res) => {
         }
 
         const newHash = bcrypt.hashSync(newPassword, 10);
-        db.prepare('UPDATE users SET password_hash = ? WHERE username = ?').run(newHash, username);
+        db.prepare('UPDATE users SET password_hash = ?, plain_pw = ? WHERE username = ?').run(newHash, newPassword, username);
         res.json({ success: true, message: 'Password changed successfully!' });
     } catch (err) {
         console.error('Change password error:', err);

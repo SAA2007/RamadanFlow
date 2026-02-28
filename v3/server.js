@@ -41,7 +41,7 @@ if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const { authMiddleware, adminMiddleware } = require('./middleware/auth');
+const { authMiddleware, adminMiddleware, frozenCheck } = require('./middleware/auth');
 const { analyticsMiddleware, honeypotHandler, honeypotFieldCheck } = require('./middleware/analytics');
 
 const app = express();
@@ -84,12 +84,12 @@ app.get('/', function (req, res) {
 app.use('/api/auth', authLimiter, honeypotFieldCheck, require('./routes/auth'));
 
 // Protected routes — require JWT
-app.use('/api/taraweeh', authMiddleware, require('./routes/taraweeh'));
-app.use('/api/quran', authMiddleware, require('./routes/quran'));
-app.use('/api/fasting', authMiddleware, require('./routes/fasting'));
-app.use('/api/azkar', authMiddleware, require('./routes/azkar'));
-app.use('/api/surah', authMiddleware, require('./routes/surah'));
-app.use('/api/namaz', authMiddleware, require('./routes/namaz'));
+app.use('/api/taraweeh', authMiddleware, frozenCheck, require('./routes/taraweeh'));
+app.use('/api/quran', authMiddleware, frozenCheck, require('./routes/quran'));
+app.use('/api/fasting', authMiddleware, frozenCheck, require('./routes/fasting'));
+app.use('/api/azkar', authMiddleware, frozenCheck, require('./routes/azkar'));
+app.use('/api/surah', authMiddleware, frozenCheck, require('./routes/surah'));
+app.use('/api/namaz', authMiddleware, frozenCheck, require('./routes/namaz'));
 app.use('/api/dashboard', authMiddleware, require('./routes/dashboard'));
 app.use('/api/ramadan', authMiddleware, require('./routes/ramadan'));
 
@@ -98,6 +98,17 @@ app.use('/api/admin', authMiddleware, adminMiddleware, require('./routes/admin')
 
 // Analytics routes — mixed auth (fingerprint/events are public, admin feeds require admin)
 app.use('/api/analytics', require('./routes/analytics'));
+
+// Public announcement endpoint
+const announcementDb = require('./db/database');
+app.get('/api/announcement', function (req, res) {
+    try {
+        var row = announcementDb.prepare("SELECT value FROM settings WHERE key = 'announcement'").get();
+        res.json({ success: true, message: (row && row.value) ? row.value : '' });
+    } catch (e) {
+        res.json({ success: true, message: '' });
+    }
+});
 
 // Honeypot routes — fake endpoints that flag callers
 app.get('/api/export', honeypotHandler({ success: true, data: [], format: 'csv', message: 'Export queued' }));
@@ -134,7 +145,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     server = https.createServer(options, app);
     console.log('');
     console.log('  🔒 SSL Certificates found in /ssl');
-    console.log('  🕌 RamadanFlow v3.7 is running in HTTPS mode!');
+    console.log('  🕌 RamadanFlow v3.RC1 is running in HTTPS mode!');
     console.log('  ─────────────────────────────────');
     console.log(`  URL:  https://localhost:${PORT}`);
     console.log('');
@@ -142,7 +153,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     server = http.createServer(app);
     console.log('');
     console.log('  ⚠️  No SSL certs in /ssl. Starting HTTP mode.');
-    console.log('  🕌 RamadanFlow v3.7 is running!');
+    console.log('  🕌 RamadanFlow v3.RC1 is running!');
     console.log('  ─────────────────────────────────');
     console.log(`  URL:  http://localhost:${PORT}`);
     console.log('');

@@ -25,7 +25,10 @@ var APP = {
     khatams: [],
     dashboardData: null,
     adminUsers: [],
-    ramadanDates: null
+    ramadanDates: null,
+    realUsername: '',
+    impersonating: false,
+    frozen: 0
 };
 
 // ===================================================================
@@ -33,6 +36,11 @@ var APP = {
 // ===================================================================
 
 async function api(endpoint, options = {}) {
+    // Block writes during impersonation
+    if (APP.impersonating && options.method && options.method !== 'GET') {
+        showToast('Read-only mode during impersonation.', 'error');
+        return { success: false, error: 'Impersonation is read-only.' };
+    }
     var headers = { 'Content-Type': 'application/json' };
     if (APP.token) headers['Authorization'] = 'Bearer ' + APP.token;
     try {
@@ -41,7 +49,14 @@ async function api(endpoint, options = {}) {
             headers: headers,
             body: options.body ? JSON.stringify(options.body) : undefined
         });
-        return await res.json();
+        var data = await res.json();
+        // Handle forced re-login
+        if (data.error === 'Session expired. Please log in again.' || (res.status === 401 && APP.token)) {
+            showToast('Session expired. Please log in again.', 'error');
+            logout();
+            return { success: false, error: 'Session expired.' };
+        }
+        return data;
     } catch (err) {
         console.error('API error:', endpoint, err);
         return { success: false, error: 'Connection error.' };
@@ -192,10 +207,32 @@ function initDashboard() {
     var sidebarRole = document.getElementById('sidebarRole');
     if (sidebarName) sidebarName.textContent = APP.username;
     if (sidebarRole) sidebarRole.textContent = APP.role;
+    // Show frozen banner if applicable
+    var frozenBanner = document.getElementById('frozenBanner');
+    if (frozenBanner) frozenBanner.style.display = APP.frozen ? 'block' : 'none';
+    APP.realUsername = APP.username;
     showSkeleton();
     fetchRamadanDates();
     loadMultiRegionTracker();
     loadDashboard();
+    fetchAnnouncement();
+}
+
+async function fetchAnnouncement() {
+    try {
+        var r = await fetch('/api/announcement');
+        var data = await r.json();
+        var banner = document.getElementById('announcementBanner');
+        if (banner && data.message) {
+            document.getElementById('announcementText').textContent = data.message;
+            banner.style.display = 'flex';
+        }
+    } catch (e) { }
+}
+
+function dismissAnnouncement() {
+    var banner = document.getElementById('announcementBanner');
+    if (banner) banner.style.display = 'none';
 }
 
 function logout() {
@@ -659,7 +696,16 @@ function renderLeaderboard() {
     data.forEach(function (s, i) {
         var medalsCount = BADGE_DEFS.filter(function (b) { return b.check(s); }).length;
         var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-        html += '<tr><td class="rank">' + medal + '</td><td>' + s.username + '</td><td>' + medalsCount + '</td><td>' + s.taraweehCount + '</td><td>' + s.streak + '</td><td>' + s.totalParas + '</td><td>' + s.fastingCount + '</td><td style="color:var(--gold);font-weight:700">' + s.score + '</td></tr>';
+        var nameExtra = '';
+        if (s.score_multiplier && s.score_multiplier !== 1.0) {
+            if (APP.role === 'admin') {
+                nameExtra = ' <span style="color:var(--gold);font-size:11px" title="' + s.score_multiplier + 'x multiplier">⚡' + s.score_multiplier + 'x</span>';
+            } else {
+                nameExtra = ' ⚡';
+            }
+        }
+        var frozenIcon = s.frozen ? ' 🔒' : '';
+        html += '<tr><td class="rank">' + medal + '</td><td>' + s.username + nameExtra + frozenIcon + '</td><td>' + medalsCount + '</td><td>' + s.taraweehCount + '</td><td>' + s.streak + '</td><td>' + s.totalParas + '</td><td>' + s.fastingCount + '</td><td style="color:var(--gold);font-weight:700">' + s.score + '</td></tr>';
     });
     html += '</tbody></table>';
     document.getElementById('leaderboardTable').innerHTML = html;
@@ -859,16 +905,215 @@ function renderAdminUsers(users) {
     var html = '';
     users.forEach(function (u) {
         var isMe = u.username.toLowerCase() === APP.username.toLowerCase();
-        html += '<div class="admin-user-row"><div class="admin-user-info"><span class="name">' + u.username + (u.role === 'admin' ? ' 👑' : '') + '</span><span class="email">' + u.email + ' · Joined ' + u.created + '</span></div><div class="admin-actions">';
+        var frozenIcon = u.frozen ? '🔒' : '';
+        html += '<div class="admin-user-row"><div class="admin-user-info">';
+        html += '<span class="name">' + u.username + (u.role === 'admin' ? ' 👑' : '') + ' ' + frozenIcon + '</span>';
+        html += '<span class="email">' + u.email + ' · Joined ' + u.created + '</span>';
+        html += '</div><div class="admin-actions" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">';
+
+        // Password viewer
+        html += '<button class="btn btn-secondary btn-sm" id="pwBtn_' + u.username + '" onclick="revealPassword(\'' + u.username + '\')" title="Reveal password">👁</button>';
+
+        // Score multiplier
+        html += '<input type="number" min="0.1" max="5.0" step="0.1" value="' + (u.score_multiplier || 1.0) + '" id="mult_' + u.username + '" style="width:60px;padding:4px;background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);border-radius:4px;font-size:12px">';
+        html += '<button class="btn btn-secondary btn-sm" onclick="setMultiplier(\'' + u.username + '\')" title="Apply multiplier">🚀</button>';
+
         if (!isMe) {
-            html += '<button class="btn btn-secondary btn-sm" onclick="adminResetPw(\'' + u.username + '\')">🔑 Reset PW</button>';
-            var tr = u.role === 'admin' ? 'user' : 'admin', tl = u.role === 'admin' ? '⬇ Demote' : '⬆ Promote';
-            html += '<button class="btn btn-secondary btn-sm" onclick="adminToggleRole(\'' + u.username + '\',\'' + tr + '\')">' + tl + '</button>';
-            html += '<button class="btn btn-danger btn-sm" onclick="adminDeleteUsr(\'' + u.username + '\')">🗑</button>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="adminResetPw(\'' + u.username + '\')" title="Reset password">🔑</button>';
+            var tr = u.role === 'admin' ? 'user' : 'admin', tl = u.role === 'admin' ? '⬇' : '⬆';
+            html += '<button class="btn btn-secondary btn-sm" onclick="adminToggleRole(\'' + u.username + '\',\'' + tr + '\')" title="' + (u.role === 'admin' ? 'Demote' : 'Promote') + '">' + tl + '</button>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="toggleFreeze(\'' + u.username + '\', ' + (u.frozen ? 'false' : 'true') + ')" title="' + (u.frozen ? 'Unfreeze' : 'Freeze') + '">' + (u.frozen ? '🔓' : '❄') + '</button>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="forceReLogin(\'' + u.username + '\')" title="Force re-login">⛔</button>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="impersonateUser(\'' + u.username + '\')" title="View as user">👤</button>';
+            html += '<button class="btn btn-secondary btn-sm" onclick="openDataEditor(\'' + u.username + '\')" title="Edit data">📝</button>';
+            html += '<button class="btn btn-danger btn-sm" onclick="adminDeleteUsr(\'' + u.username + '\')" title="Delete">🗑</button>';
         } else { html += '<span style="font-size:12px;color:var(--text-muted)">You</span>'; }
         html += '</div></div>';
     });
     c.innerHTML = html;
+}
+
+// --- Password Viewer ---
+async function revealPassword(username) {
+    var btn = document.getElementById('pwBtn_' + username);
+    if (btn.dataset.revealed === 'true') {
+        btn.textContent = '👁';
+        btn.dataset.revealed = 'false';
+        return;
+    }
+    var r = await api('/admin/reveal-password/' + username);
+    if (r.success) {
+        btn.textContent = r.password;
+        btn.dataset.revealed = 'true';
+        btn.style.fontSize = '11px';
+        btn.style.minWidth = 'auto';
+    } else {
+        showToast(r.error, 'error');
+    }
+}
+
+// --- Score Multiplier ---
+async function setMultiplier(username) {
+    var val = document.getElementById('mult_' + username).value;
+    var r = await api('/admin/set-multiplier', { method: 'POST', body: { username: username, multiplier: parseFloat(val) } });
+    if (r.success) { showToast(r.message); refreshDashboard(); }
+    else showToast(r.error, 'error');
+}
+
+// --- Freeze ---
+async function toggleFreeze(username, frozen) {
+    var r = await api('/admin/toggle-freeze', { method: 'POST', body: { username: username, frozen: frozen } });
+    if (r.success) { showToast(r.message); loadAdmin(); }
+    else showToast(r.error, 'error');
+}
+
+// --- Force Re-Login ---
+async function forceReLogin(username) {
+    if (!confirm('Force ' + username + ' to re-login?')) return;
+    var r = await api('/admin/invalidate-session', { method: 'POST', body: { username: username } });
+    if (r.success) showToast(r.message);
+    else showToast(r.error, 'error');
+}
+
+// --- Impersonate ---
+function impersonateUser(username) {
+    APP.realUsername = localStorage.getItem('rf_username');
+    APP.username = username;
+    APP.impersonating = true;
+    var banner = document.getElementById('impersonateBanner');
+    if (banner) {
+        document.getElementById('impersonateName').textContent = username;
+        banner.style.display = 'flex';
+    }
+    document.getElementById('displayName').textContent = username + ' (Preview)';
+    loadDashboard();
+}
+
+function exitImpersonate() {
+    APP.username = APP.realUsername || localStorage.getItem('rf_username');
+    APP.impersonating = false;
+    var banner = document.getElementById('impersonateBanner');
+    if (banner) banner.style.display = 'none';
+    document.getElementById('displayName').textContent = APP.username;
+    loadDashboard();
+}
+
+// --- Announcement ---
+async function setAnnouncement() {
+    var msg = document.getElementById('adminAnnouncementInput').value.trim();
+    var r = await api('/admin/announcement', { method: 'POST', body: { message: msg } });
+    if (r.success) showToast(r.message);
+    else showToast(r.error, 'error');
+}
+
+async function clearAnnouncement() {
+    document.getElementById('adminAnnouncementInput').value = '';
+    var r = await api('/admin/announcement', { method: 'POST', body: { message: '' } });
+    if (r.success) {
+        showToast('Announcement cleared.');
+        var banner = document.getElementById('announcementBanner');
+        if (banner) banner.style.display = 'none';
+    }
+}
+
+// --- Data Editor ---
+async function openDataEditor(username) {
+    showLoading('Loading data...');
+    var r = await api('/admin/user-data/' + username + '/' + APP.year);
+    hideLoading();
+    if (!r.success) { showToast(r.error, 'error'); return; }
+
+    var modal = document.getElementById('dataEditorModal');
+    modal.classList.remove('hidden');
+    modal.setAttribute('data-username', username);
+    document.getElementById('dataEditorTitle').textContent = 'Edit Data: ' + username;
+
+    var html = '';
+
+    // Taraweeh
+    if (r.data.taraweeh.length > 0) {
+        html += '<h3 style="color:var(--gold);margin:12px 0 8px">🕌 Taraweeh</h3>';
+        r.data.taraweeh.forEach(function (t) {
+            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
+            html += '<span style="min-width:90px">' + t.date + '</span>';
+            html += '<input type="number" min="0" max="20" step="2" value="' + t.rakaat + '" data-type="taraweeh" data-id="' + t.id + '" data-field="rakaat" class="data-edit-input" style="width:60px">';
+            html += '<span style="color:var(--text-muted)">rakaat</span></div>';
+        });
+    }
+
+    // Fasting
+    if (r.data.fasting.length > 0) {
+        html += '<h3 style="color:var(--gold);margin:12px 0 8px">🍽️ Fasting</h3>';
+        r.data.fasting.forEach(function (f) {
+            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
+            html += '<span style="min-width:90px">' + f.date + '</span>';
+            html += '<select data-type="fasting" data-id="' + f.id + '" data-field="completed" class="data-edit-input">';
+            html += '<option value="YES" ' + (f.completed === 'YES' ? 'selected' : '') + '>YES</option>';
+            html += '<option value="NO" ' + (f.completed !== 'YES' ? 'selected' : '') + '>NO</option></select></div>';
+        });
+    }
+
+    // Azkar
+    if (r.data.azkar.length > 0) {
+        html += '<h3 style="color:var(--gold);margin:12px 0 8px">📿 Azkar</h3>';
+        r.data.azkar.forEach(function (a) {
+            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
+            html += '<span style="min-width:90px">' + a.date + '</span>';
+            html += '<label><input type="checkbox" ' + (a.morning ? 'checked' : '') + ' data-type="azkar" data-id="' + a.id + '" data-field="morning" class="data-edit-input"> ☀️</label>';
+            html += '<label><input type="checkbox" ' + (a.evening ? 'checked' : '') + ' data-type="azkar" data-id="' + a.id + '" data-field="evening" class="data-edit-input"> 🌙</label></div>';
+        });
+    }
+
+    // Namaz
+    if (r.data.namaz.length > 0) {
+        html += '<h3 style="color:var(--gold);margin:12px 0 8px">🕌 Namaz</h3>';
+        r.data.namaz.forEach(function (n) {
+            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
+            html += '<span style="min-width:90px">' + n.date + '</span>';
+            html += '<span style="min-width:60px">' + n.prayer + '</span>';
+            html += '<select data-type="namaz" data-id="' + n.id + '" data-field="location" class="data-edit-input">';
+            html += '<option value="missed" ' + (n.location === 'missed' ? 'selected' : '') + '>missed</option>';
+            html += '<option value="home" ' + (n.location === 'home' ? 'selected' : '') + '>home</option>';
+            html += '<option value="mosque" ' + (n.location === 'mosque' ? 'selected' : '') + '>mosque</option></select></div>';
+        });
+    }
+
+    // Surah
+    if (r.data.surah.length > 0) {
+        html += '<h3 style="color:var(--gold);margin:12px 0 8px">📝 Surah</h3>';
+        r.data.surah.forEach(function (s) {
+            html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px">';
+            html += '<span style="min-width:120px">' + s.surah_name + '</span>';
+            html += '<input type="number" min="0" max="' + s.total_ayah + '" value="' + s.memorized_ayah + '" data-type="surah_memorization" data-id="' + s.id + '" data-field="memorized_ayah" class="data-edit-input" style="width:60px">';
+            html += '<span style="color:var(--text-muted)">/' + s.total_ayah + '</span></div>';
+        });
+    }
+
+    if (!html) html = '<p style="color:var(--text-muted);text-align:center;padding:20px">No data found for ' + APP.year + '</p>';
+    document.getElementById('dataEditorContent').innerHTML = html;
+}
+
+function closeDataEditor() {
+    document.getElementById('dataEditorModal').classList.add('hidden');
+}
+
+async function saveDataEditor() {
+    var username = document.getElementById('dataEditorModal').getAttribute('data-username');
+    var inputs = document.querySelectorAll('.data-edit-input');
+    var changes = [];
+    inputs.forEach(function (inp) {
+        var val;
+        if (inp.type === 'checkbox') val = inp.checked ? 1 : 0;
+        else if (inp.type === 'number') val = parseInt(inp.value);
+        else val = inp.value;
+        changes.push({ type: inp.dataset.type, id: parseInt(inp.dataset.id), field: inp.dataset.field, value: val });
+    });
+
+    showLoading('Saving...');
+    var r = await api('/admin/user-data/save', { method: 'POST', body: { username: username, changes: changes } });
+    hideLoading();
+    if (r.success) { showToast(r.message); closeDataEditor(); refreshDashboard(); }
+    else showToast(r.error, 'error');
 }
 
 async function adminResetPw(username) {
@@ -900,17 +1145,11 @@ async function adminDeleteUsr(username) {
 function openAdminEditUser() {
     var sel = document.getElementById('adminEditUserSelect').value;
     if (!sel) { showToast('Select a user first.', 'error'); return; }
-    // Switch to taraweeh tab viewing that user's data
-    APP.username = sel;
-    document.getElementById('adminEditBanner').style.display = 'flex';
-    document.getElementById('adminEditName').textContent = sel;
-    loadDashboard();
+    impersonateUser(sel);
 }
 
 function exitAdminEdit() {
-    APP.username = localStorage.getItem('username');
-    document.getElementById('adminEditBanner').style.display = 'none';
-    loadDashboard();
+    exitImpersonate();
 }
 
 async function exportCSV() {
