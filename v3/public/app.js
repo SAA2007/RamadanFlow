@@ -476,7 +476,7 @@ function renderTaraweehCalendar() {
         }
         var rb = (entry && entry.completed && entry.rakaat) ? '<span class="rakaat-badge">' + entry.rakaat + 'r</span>' : '';
         // Only allow clicking if NOT in future AND within Ramadan timeframe
-        var oc = (isFuture || !isRamadan) ? '' : ' onclick="openTaraweehModal(\'' + ds + '\')"';
+        var oc = (isFuture || !isRamadan) ? '' : ' onclick="openTaraweehModal(this, \'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><div class="calendar-dots">' + regionText + '</div>' + rb + '</div>';
     }
     container.innerHTML = html;
@@ -485,33 +485,43 @@ function renderTaraweehCalendar() {
 function prevMonth() { APP.calendarMonth--; if (APP.calendarMonth < 0) { APP.calendarMonth = 11; APP.calendarYear--; } renderTaraweehCalendar(); }
 function nextMonth() { APP.calendarMonth++; if (APP.calendarMonth > 11) { APP.calendarMonth = 0; APP.calendarYear++; } renderTaraweehCalendar(); }
 
-function openTaraweehModal(dateStr) {
-    var modal = document.getElementById('taraweehModal');
-    modal.classList.remove('hidden');
-    modal.setAttribute('data-date', dateStr);
-    document.getElementById('taraweehModalDate').textContent = dateStr;
-    var entry = APP.taraweehData[dateStr];
-    document.getElementById('taraweehRemoveBtn').style.display = (entry && entry.completed) ? '' : 'none';
-    document.getElementById('rakaatInput').value = (entry && entry.rakaat) ? entry.rakaat : 8;
+function openTaraweehModal(el, dateStr) {
+    var entry = APP.taraweehData[dateStr] || {};
+    var rakaat = (entry && entry.rakaat) ? entry.rakaat : 8;
+    var showRemove = (entry && entry.completed) ? '' : 'display:none;';
+    var dateObj = new Date(dateStr + 'T00:00:00');
+    var displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    var html = '<div class="smart-popup-content" data-date="' + dateStr + '">' +
+        '<h3 style="margin:0 0 8px;color:var(--gold)">' + displayDate + '</h3>' +
+        '<label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Raka\'at (2-20, even):</label>' +
+        '<input type="number" id="rakaatInput" min="2" max="20" step="2" value="' + rakaat + '" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:Inter,sans-serif;font-size:16px;margin-bottom:12px">' +
+        '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-primary" onclick="saveTaraweeh()" style="flex:1">Save \u2714</button>' +
+        '<button class="btn btn-secondary" id="taraweehRemoveBtn" style="' + showRemove + '" onclick="removeTaraweeh()">Remove</button>' +
+        '<button class="btn btn-secondary" onclick="closeSmartPopup()">Cancel</button>' +
+        '</div></div>';
+    openSmartPopup(el, html);
 }
 
-function closeTaraweehModal() { document.getElementById('taraweehModal').classList.add('hidden'); }
+function closeTaraweehModal() { closeSmartPopup(); }
 
 async function saveTaraweeh() {
-    var modal = document.getElementById('taraweehModal');
-    var ds = modal.getAttribute('data-date');
+    var container = document.querySelector('.smart-popup-content[data-date]') || document.querySelector('.bottom-sheet .smart-popup-content[data-date]');
+    if (!container) { var modal = document.getElementById('taraweehModal'); container = modal; }
+    var ds = container.getAttribute('data-date');
     var rakaat = Math.min(20, Math.max(2, parseInt(document.getElementById('rakaatInput').value) || 8));
     if (rakaat % 2 !== 0) rakaat -= 1;
-    closeTaraweehModal(); showLoading('Saving...');
+    closeSmartPopup(); showLoading('Saving...');
     var r = await api('/taraweeh/log', { method: 'POST', body: { date: ds, completed: true, rakaat: rakaat } });
     hideLoading();
     if (r.success) { showToast(r.message); loadTaraweeh(); refreshDashboard(); }
 }
 
 async function removeTaraweeh() {
-    var modal = document.getElementById('taraweehModal');
-    var ds = modal.getAttribute('data-date');
-    closeTaraweehModal(); showLoading('Removing...');
+    var container = document.querySelector('.smart-popup-content[data-date]');
+    if (!container) return;
+    var ds = container.getAttribute('data-date');
+    closeSmartPopup(); showLoading('Removing...');
     var r = await api('/taraweeh/log', { method: 'POST', body: { date: ds, completed: false, rakaat: 0 } });
     hideLoading();
     if (r.success) { showToast(r.message); loadTaraweeh(); refreshDashboard(); }
@@ -953,7 +963,7 @@ function renderAzkarCalendar() {
         if (hasMorning) icons += '☀️';
         if (hasEvening) icons += '🌙';
 
-        var oc = isFuture ? '' : ' onclick="openAzkarModal(\'' + ds + '\')"';
+        var oc = isFuture ? '' : ' onclick="openAzkarModal(this, \'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><span class="rakaat-badge">' + icons + '</span></div>';
     }
     container.innerHTML = html;
@@ -962,37 +972,35 @@ function renderAzkarCalendar() {
 function prevAzkarMonth() { APP.azkarCalMonth--; if (APP.azkarCalMonth < 0) { APP.azkarCalMonth = 11; APP.azkarCalYear--; } renderAzkarCalendar(); }
 function nextAzkarMonth() { APP.azkarCalMonth++; if (APP.azkarCalMonth > 11) { APP.azkarCalMonth = 0; APP.azkarCalYear++; } renderAzkarCalendar(); }
 
-function openAzkarModal(dateStr) {
-    var modal = document.getElementById('azkarModal');
-    modal.classList.remove('hidden');
-    modal.setAttribute('data-date', dateStr);
-
-    // Format date nicely: "Mon, Mar 12, 2026"
-    var dateObj = new Date(dateStr + 'T00:00:00'); // avoid timezone offsets shifting day backward
-    var displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-    document.getElementById('azkarModalDate').textContent = displayDate;
-
+function openAzkarModal(el, dateStr) {
     var entry = APP.azkarData[dateStr] || {};
-    document.getElementById('azkarMorningCheck').checked = !!entry.morning;
-    document.getElementById('azkarEveningCheck').checked = !!entry.evening;
+    var dateObj = new Date(dateStr + 'T00:00:00');
+    var displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    var html = '<div class="smart-popup-content" data-date="' + dateStr + '">' +
+        '<h3 style="margin:0 0 12px;color:var(--gold)">' + displayDate + '</h3>' +
+        '<label style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px">' +
+        '<input type="checkbox" id="azkarMorningCheck"' + (entry.morning ? ' checked' : '') + '> \u2600\uFE0F Morning Adhkar</label>' +
+        '<label style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:12px">' +
+        '<input type="checkbox" id="azkarEveningCheck"' + (entry.evening ? ' checked' : '') + '> \uD83C\uDF19 Evening Adhkar</label>' +
+        '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-primary" onclick="saveAzkarDay()" style="flex:1">Save \u2714</button>' +
+        '<button class="btn btn-secondary" onclick="closeSmartPopup()">Cancel</button>' +
+        '</div></div>';
+    openSmartPopup(el, html);
 }
 
-function closeAzkarModal() {
-    document.getElementById('azkarModal').classList.add('hidden');
-}
+function closeAzkarModal() { closeSmartPopup(); }
 
 async function saveAzkarDay() {
-    var modal = document.getElementById('azkarModal');
-    var ds = modal.getAttribute('data-date');
-
+    var container = document.querySelector('.smart-popup-content[data-date]');
+    if (!container) return;
+    var ds = container.getAttribute('data-date');
     var mChecked = document.getElementById('azkarMorningCheck').checked;
     var eChecked = document.getElementById('azkarEveningCheck').checked;
-
-    closeAzkarModal();
+    closeSmartPopup();
     showLoading('Saving...');
     var r = await api('/azkar/log', { method: 'POST', body: { date: ds, morning: mChecked, evening: eChecked } });
     hideLoading();
-
     if (r.success) { showToast(r.message); loadAzkar(); refreshDashboard(); }
 }
 
@@ -1148,7 +1156,7 @@ function renderNamazGrid() {
         if (loggedCount === 5) classes += ' completed';
 
         var badge = loggedCount > 0 ? ('<span class="rakaat-badge">' + loggedCount + '/5</span>') : '';
-        var oc = isFuture ? '' : ' onclick="openNamazModal(\'' + ds + '\')"';
+        var oc = isFuture ? '' : ' onclick="openNamazModal(this, \'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span>' + badge + '</div>';
     }
     html += '</div>';
@@ -1158,30 +1166,36 @@ function renderNamazGrid() {
 function prevNamazMonth() { APP.namazCalMonth--; if (APP.namazCalMonth < 0) { APP.namazCalMonth = 11; APP.namazCalYear--; } loadNamaz(); }
 function nextNamazMonth() { APP.namazCalMonth++; if (APP.namazCalMonth > 11) { APP.namazCalMonth = 0; APP.namazCalYear++; } loadNamaz(); }
 
-function openNamazModal(dateStr) {
-    document.getElementById('namazModal').classList.remove('hidden');
-    document.getElementById('namazModalDate').textContent = dateStr;
-    document.getElementById('namazModal').setAttribute('data-date', dateStr);
-
+function openNamazModal(el, dateStr) {
     var dayData = APP.namazData[dateStr] || {};
-    var html = '';
+    var dateObj = new Date(dateStr + 'T00:00:00');
+    var displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    var html = '<div class="smart-popup-content" data-date="' + dateStr + '">' +
+        '<h3 style="margin:0 0 12px;color:var(--gold)">' + displayDate + '</h3>';
     PRAYERS.forEach(function (p) {
         var loc = dayData[p] || 'missed';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg-secondary);border-radius:4px">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg-secondary);border-radius:var(--radius-sm);margin-bottom:6px">';
         html += '<span style="font-weight:600">' + PRAYER_TIMES[p] + ' ' + PRAYER_LABELS[p] + '</span>';
-        html += '<select id="namazLoc_' + p + '" style="background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);padding:6px;border-radius:4px;font-family:\'Inter\',sans-serif">';
-        html += '<option value="missed" ' + (loc === 'missed' ? 'selected' : '') + '>❌ Missed</option>';
+        html += '<select id="namazLoc_' + p + '" style="background:var(--bg-input);border:1px solid var(--border-color);color:var(--text-primary);padding:8px;border-radius:var(--radius-sm);font-family:Inter,sans-serif;font-size:14px">';
+        html += '<option value="missed" ' + (loc === 'missed' ? 'selected' : '') + '>\u274C Missed</option>';
         html += '<option value="home" ' + (loc === 'home' ? 'selected' : '') + '>\uD83C\uDFE0 Home</option>';
         html += '<option value="mosque" ' + (loc === 'mosque' ? 'selected' : '') + '>\uD83D\uDD4C Mosque</option>';
         html += '</select></div>';
     });
-    document.getElementById('namazModalGrid').innerHTML = html;
+    html += '<div style="display:flex;gap:8px;margin-top:12px">' +
+        '<button class="btn btn-primary" onclick="saveNamazDay()" style="flex:1">Save \u2714</button>' +
+        '<button class="btn btn-secondary" onclick="closeSmartPopup()">Cancel</button>' +
+        '</div></div>';
+    openSmartPopup(el, html);
 }
 
-function closeNamazModal() { document.getElementById('namazModal').classList.add('hidden'); }
+function closeNamazModal() { closeSmartPopup(); }
 
 async function saveNamazDay() {
-    var dateStr = document.getElementById('namazModal').getAttribute('data-date');
+    var container = document.querySelector('.smart-popup-content[data-date]');
+    if (!container) return;
+    var dateStr = container.getAttribute('data-date');
+    closeSmartPopup();
     showLoading('Saving...');
     var promises = [];
     PRAYERS.forEach(function (p) {
@@ -1190,7 +1204,6 @@ async function saveNamazDay() {
     });
     await Promise.all(promises);
     hideLoading();
-    closeNamazModal();
     showToast('Namaz saved');
     loadNamaz();
     refreshDashboard();
