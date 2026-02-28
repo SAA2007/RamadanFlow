@@ -146,10 +146,12 @@ function showRegisterAlert(msg, type) {
 // ===================================================================
 
 function initApp() {
-    APP.token = localStorage.getItem('token') || '';
-    APP.username = localStorage.getItem('username') || '';
-    APP.role = localStorage.getItem('role') || 'user';
-    APP.email = localStorage.getItem('email') || '';
+    APP.token = localStorage.getItem('rf_token') || '';
+    APP.username = localStorage.getItem('rf_username') || '';
+    APP.role = localStorage.getItem('rf_role') || 'user';
+    APP.email = localStorage.getItem('rf_email') || '';
+    APP.gender = localStorage.getItem('rf_gender') || '';
+    APP.age = localStorage.getItem('rf_age') || '';
 
     if (!APP.username || !APP.token) {
         goToPage('Login');
@@ -162,6 +164,8 @@ function initDashboard() {
     goToPage('Dashboard');
     document.getElementById('displayName').textContent = APP.username;
     document.getElementById('displayRole').textContent = APP.role;
+    // Always hide admin tab first, then show only if admin
+    document.getElementById('adminTabBtn').style.display = 'none';
     if (APP.role === 'admin') document.getElementById('adminTabBtn').style.display = '';
     showSkeleton();
     fetchRamadanDates();
@@ -170,9 +174,20 @@ function initDashboard() {
 }
 
 function logout() {
-    localStorage.clear();
+    localStorage.removeItem('rf_token');
+    localStorage.removeItem('rf_username');
+    localStorage.removeItem('rf_role');
+    localStorage.removeItem('rf_email');
+    localStorage.removeItem('rf_gender');
+    localStorage.removeItem('rf_age');
+    // Also clear any legacy keys
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    localStorage.removeItem('email');
     APP.username = '';
     APP.token = '';
+    APP.role = 'user';
     APP.dashboardData = null;
     APP.taraweehData = {};
     APP.khatams = [];
@@ -327,7 +342,7 @@ function renderMyStats() {
         if (data.summaries[i].username.toLowerCase() === APP.username.toLowerCase()) { me = data.summaries[i]; break; }
     }
     if (me) {
-        document.getElementById('statTaraweeh').textContent = me.taraweehCount;
+        document.getElementById('statTaraweeh').textContent = me.taraweehAverage + 'r avg';
         document.getElementById('statStreak').textContent = me.streak;
         document.getElementById('statParas').textContent = me.totalParas;
         document.getElementById('statKhatams').textContent = me.completedKhatams;
