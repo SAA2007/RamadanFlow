@@ -5,6 +5,12 @@
 # Usage:   chmod +x deploy.sh && ./deploy.sh
 #          chmod +x deploy.sh && ./deploy.sh --fresh   (wipes DB)
 # ===================================================================
+#
+# IMPORTANT: better-sqlite3 must be compiled for the correct Node version.
+# Always run: nvm use 24 && npm_config_build_from_source=true npm install
+# If you see ERR_DLOPEN_FAILED, run:
+#   rm -rf node_modules && nvm use 24 && npm_config_build_from_source=true npm install
+#
 
 set -e
 RED='\033[0;31m'
@@ -77,6 +83,9 @@ echo ""
 # 4. Install dependencies
 # -------------------------------------------------------------------
 echo -e "${GOLD}📦 Installing npm dependencies...${NC}"
+export npm_config_build_from_source=true
+source ~/.nvm/nvm.sh 2>/dev/null || true
+nvm use 24 || true
 npm install --production
 echo -e "${GREEN}✅ Dependencies installed${NC}"
 echo ""
