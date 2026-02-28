@@ -1195,12 +1195,17 @@ async function saveNamazDay() {
     var container = document.querySelector('.smart-popup-content[data-date]');
     if (!container) return;
     var dateStr = container.getAttribute('data-date');
+    // Collect values BEFORE closing popup (closing destroys the DOM)
+    var entries = [];
+    PRAYERS.forEach(function (p) {
+        var el = document.getElementById('namazLoc_' + p);
+        if (el) entries.push({ date: dateStr, prayer: p, location: el.value });
+    });
     closeSmartPopup();
     showLoading('Saving...');
     var promises = [];
-    PRAYERS.forEach(function (p) {
-        var loc = document.getElementById('namazLoc_' + p).value;
-        promises.push(api('/namaz/log', { method: 'POST', body: { date: dateStr, prayer: p, location: loc } }));
+    entries.forEach(function (e) {
+        promises.push(api('/namaz/log', { method: 'POST', body: e }));
     });
     await Promise.all(promises);
     hideLoading();
