@@ -118,6 +118,20 @@ try { db.exec("ALTER TABLE users ADD COLUMN score_multiplier REAL DEFAULT 1.0");
 try { db.exec("ALTER TABLE users ADD COLUMN session_invalidated_at TEXT"); } catch (e) { }
 try { db.exec("ALTER TABLE users ADD COLUMN frozen INTEGER DEFAULT 0"); } catch (e) { }
 
+// Ramadan admin dates table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ramadan_dates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    year INTEGER NOT NULL,
+    region TEXT NOT NULL,
+    date TEXT NOT NULL,
+    set_by_admin INTEGER DEFAULT 1,
+    note TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(year, region)
+  )
+`);
+
 // ===================================================================
 // INDEXES (idempotent — IF NOT EXISTS)
 // ===================================================================

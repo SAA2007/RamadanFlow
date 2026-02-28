@@ -805,6 +805,9 @@ async function loadAdmin() {
 
     // Load analytics dashboard
     loadAnalyticsDashboard();
+
+    // Load Ramadan admin dates
+    loadRamadanDates();
 }
 
 async function loadAnalyticsDashboard() {
@@ -1170,6 +1173,54 @@ async function exportCSV() {
     a.href = URL.createObjectURL(blob);
     a.download = 'RamadanFlow_' + APP.year + '.csv';
     a.click();
+}
+
+// --- Ramadan Admin Dates ---
+async function loadRamadanDates() {
+    var r = await api('/ramadan/admin-dates/' + APP.year);
+    if (!r.success) return;
+    var regions = ['ksa', 'pak', 'az'];
+    regions.forEach(function (id) {
+        var idCap = id.charAt(0).toUpperCase() + id.slice(1);
+        var inp = document.getElementById('rd' + idCap);
+        var noteInp = document.getElementById('rd' + idCap + 'Note');
+        var badge = document.getElementById('rd' + idCap + 'Badge');
+        if (r.dates[id]) {
+            if (inp) inp.value = r.dates[id].date;
+            if (noteInp) noteInp.value = r.dates[id].note || '';
+            if (badge) badge.style.display = 'inline-block';
+        } else {
+            if (badge) badge.style.display = 'none';
+        }
+    });
+}
+
+async function saveRamadanDate(region) {
+    var idCap = region.charAt(0).toUpperCase() + region.slice(1);
+    var date = document.getElementById('rd' + idCap).value;
+    var note = document.getElementById('rd' + idCap + 'Note').value;
+    var notify = document.getElementById('rdNotify').checked;
+    if (!date) { showToast('Select a date first.', 'error'); return; }
+    var r = await api('/ramadan/admin-dates/save', { method: 'POST', body: { year: APP.year, region: region, date: date, note: note, notifyUsers: notify } });
+    if (r.success) { showToast(r.message); loadRamadanDates(); }
+    else showToast(r.error, 'error');
+}
+
+async function clearRamadanDate(region) {
+    var r = await api('/ramadan/admin-dates/clear', { method: 'POST', body: { year: APP.year, region: region } });
+    if (r.success) {
+        showToast(r.message);
+        var idCap = region.charAt(0).toUpperCase() + region.slice(1);
+        var badge = document.getElementById('rd' + idCap + 'Badge');
+        if (badge) badge.style.display = 'none';
+    } else showToast(r.error, 'error');
+}
+
+async function saveAdminRegion() {
+    var v = document.getElementById('adminRegionSelect').value.split(',');
+    var r = await api('/ramadan/region', { method: 'POST', body: { country: v[0], city: v[1] } });
+    if (r.success) { showToast(r.message); loadDashboard(); }
+    else showToast(r.error, 'error');
 }
 
 // ===================================================================
