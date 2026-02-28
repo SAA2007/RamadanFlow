@@ -597,7 +597,7 @@ function renderCharts() {
     if (!data || data.length === 0) return;
 
     var labels = data.map(function (s) { return s.username; });
-    var taraweehData = data.map(function (s) { return s.taraweehRakaat; });
+    var taraweehData = data.map(function (s) { return s.taraweehAverage; });
     var scoreData = data.map(function (s) { return s.score; });
 
     if (taraweehChartInstance) taraweehChartInstance.destroy();
@@ -606,7 +606,7 @@ function renderCharts() {
     var ctxT = document.getElementById('taraweehChart').getContext('2d');
     taraweehChartInstance = new Chart(ctxT, {
         type: 'bar',
-        data: { labels: labels, datasets: [{ label: 'Total Rakaat', data: taraweehData, backgroundColor: 'rgba(46, 204, 113, 0.6)', borderColor: '#2ecc71', borderWidth: 1 }] },
+        data: { labels: labels, datasets: [{ label: 'Avg Rakaat/Day', data: taraweehData, backgroundColor: 'rgba(46, 204, 113, 0.6)', borderColor: '#2ecc71', borderWidth: 1 }] },
         options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 
@@ -722,6 +722,73 @@ async function loadAdmin() {
         var sel = document.getElementById('adminEditUserSelect');
         sel.innerHTML = '<option value="">— Select user —</option>';
         r.users.forEach(function (u) { sel.innerHTML += '<option value="' + u.username + '">' + u.username + '</option>'; });
+    }
+
+    // Load analytics dashboard
+    loadAnalyticsDashboard();
+}
+
+async function loadAnalyticsDashboard() {
+    try {
+        var card = document.getElementById('analyticsAdminCard');
+        if (!card) return;
+        card.style.display = 'block';
+
+        // Anomaly feed
+        var aRes = await api('/analytics/anomalies');
+        if (aRes.success && aRes.anomalies) {
+            var aHtml = '<table class="family-table"><thead><tr><th>Sev</th><th>Type</th><th>User</th><th>Details</th><th>Time</th></tr></thead><tbody>';
+            if (aRes.anomalies.length === 0) {
+                aHtml += '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No anomalies detected ✅</td></tr>';
+            } else {
+                aRes.anomalies.forEach(function (a) {
+                    var sevColor = a.severity === 'HIGH' ? 'var(--red)' : a.severity === 'MEDIUM' ? 'var(--gold)' : 'var(--text-muted)';
+                    var details = '';
+                    try { var d = JSON.parse(a.details); details = Object.keys(d).map(function (k) { return k + ':' + d[k]; }).join(', '); } catch (e) { details = a.details || ''; }
+                    aHtml += '<tr><td style="color:' + sevColor + ';font-weight:700">' + a.severity + '</td><td>' + a.anomaly_type + '</td><td>' + (a.username || '-') + '</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + details + '</td><td style="font-size:11px">' + (a.created_at || '') + '</td></tr>';
+                });
+            }
+            aHtml += '</tbody></table>';
+            document.getElementById('anomalyFeed').innerHTML = aHtml;
+        }
+
+        // Honeypot log
+        var hRes = await api('/analytics/honeypot-log');
+        if (hRes.success) {
+            if (hRes.hits.length === 0) {
+                document.getElementById('honeypotLog').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No honeypot hits yet 🍯</p>';
+            } else {
+                var hHtml = '<table class="family-table"><thead><tr><th>Route</th><th>IP Hash</th><th>UA</th><th>Time</th></tr></thead><tbody>';
+                hRes.hits.forEach(function (h) {
+                    hHtml += '<tr><td style="color:var(--red)">' + h.route + '</td><td style="font-size:11px">' + (h.ip_hash || '-') + '</td><td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (h.user_agent || '-') + '</td><td style="font-size:11px">' + (h.created_at || '') + '</td></tr>';
+                });
+                hHtml += '</tbody></table>';
+                document.getElementById('honeypotLog').innerHTML = hHtml;
+            }
+        }
+
+        // Fingerprint scores
+        var fRes = await api('/analytics/fingerprint-scores');
+        if (fRes.success) {
+            if (fRes.scores.length === 0) {
+                document.getElementById('fingerprintScores').innerHTML = '<p style="color:var(--text-muted);font-size:13px">No fingerprints collected yet</p>';
+            } else {
+                var fHtml = '<table class="family-table"><thead><tr><th>User</th><th>Unique FPs</th><th>Sessions</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody>';
+                fRes.scores.forEach(function (s) {
+                    var fpColor = s.unique_fps > 3 ? 'var(--red)' : s.unique_fps > 1 ? 'var(--gold)' : 'var(--green)';
+                    fHtml += '<tr><td>' + s.username + '</td><td style="color:' + fpColor + ';font-weight:700">' + s.unique_fps + '</td><td>' + s.total_sessions + '</td><td style="font-size:11px">' + (s.first_seen || '') + '</td><td style="font-size:11px">' + (s.last_seen || '') + '</td></tr>';
+                });
+                fHtml += '</tbody></table>';
+                document.getElementById('fingerprintScores').innerHTML = fHtml;
+            }
+        }
+
+        // Typing baseline (show all users' latest)
+        var tHtml = '<p style="color:var(--text-muted);font-size:13px">Typing profiles build over time as users type.</p>';
+        document.getElementById('typingBaseline').innerHTML = tHtml;
+
+    } catch (e) {
+        // Fail silent
     }
 }
 

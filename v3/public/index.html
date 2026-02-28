@@ -37,6 +37,7 @@
                         <input type="password" id="loginPassword" placeholder="Enter password" required
                             autocomplete="current-password">
                     </div>
+                    <input name="website" type="text" style="display:none" tabindex="-1" autocomplete="off">
                     <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
                 </form>
                 <div class="auth-link">
@@ -89,6 +90,7 @@
                         <input type="password" id="regConfirmPassword" placeholder="Re-enter password" required
                             autocomplete="new-password">
                     </div>
+                    <input name="website" type="text" style="display:none" tabindex="-1" autocomplete="off">
                     <button type="submit" class="btn btn-primary" id="registerBtn">Create Account</button>
                 </form>
                 <div class="auth-link">
@@ -377,6 +379,35 @@
                         oninput="filterAdminUsers()">
                     <div id="adminUserList"></div>
                 </div>
+
+                <div class="card" id="analyticsAdminCard" style="display:none">
+                    <div class="card-header">
+                        <h2>🛡️ Security Analytics</h2>
+                    </div>
+                    <div style="display:grid;gap:16px">
+                        <div>
+                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--gold)">⚠️ Anomaly Feed</h3>
+                            <div id="anomalyFeed" style="overflow-x:auto;max-height:300px;overflow-y:auto">Loading...
+                            </div>
+                        </div>
+                        <div>
+                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--red)">🍯 Honeypot Hits</h3>
+                            <div id="honeypotLog" style="overflow-x:auto;max-height:200px;overflow-y:auto">Loading...
+                            </div>
+                        </div>
+                        <div>
+                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--green)">🔑 Fingerprint Consistency
+                            </h3>
+                            <div id="fingerprintScores" style="overflow-x:auto">Loading...</div>
+                        </div>
+                        <div>
+                            <h3 style="font-size:14px;margin-bottom:8px;color:var(--blue)">⌨️ Typing Baseline</h3>
+                            <div id="typingBaseline" style="overflow-x:auto;max-height:200px;overflow-y:auto">Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
                         <h2>✏️ Edit User Data</h2>
@@ -518,6 +549,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/app.js"></script>
+    <script src="/analytics-client.js"></script>
 </body>
 
 </html>

@@ -125,4 +125,93 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_surah_user ON surah_memorization(username);
 `);
 
+// ===================================================================
+// ANALYTICS TABLES
+// ===================================================================
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS analytics_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT,
+    user_id INTEGER,
+    username TEXT COLLATE NOCASE,
+    event_type TEXT NOT NULL,
+    event_data TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS analytics_fingerprints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT UNIQUE,
+    user_id INTEGER,
+    username TEXT COLLATE NOCASE,
+    fingerprint_hash TEXT,
+    canvas_hash TEXT,
+    webgl_hash TEXT,
+    webrtc_ips TEXT,
+    navigator_data TEXT,
+    timezone TEXT,
+    locale TEXT,
+    color_scheme TEXT,
+    screen_resolution TEXT,
+    headless_flags TEXT,
+    ja3_hash TEXT,
+    cf_ip_country TEXT,
+    cf_device_type TEXT,
+    cf_connecting_ip_hash TEXT,
+    user_agent TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS analytics_typing_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL COLLATE NOCASE,
+    session_id TEXT,
+    avg_dwell_ms REAL,
+    avg_flight_ms REAL,
+    baseline_dwell REAL,
+    baseline_flight REAL,
+    deviation_pct REAL,
+    flagged INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS analytics_anomalies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT,
+    user_id INTEGER,
+    username TEXT COLLATE NOCASE,
+    severity TEXT DEFAULT 'LOW',
+    anomaly_type TEXT NOT NULL,
+    details TEXT,
+    ip_hash TEXT,
+    cf_ip_country TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS analytics_admin_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_username TEXT NOT NULL COLLATE NOCASE,
+    action TEXT NOT NULL,
+    target_username TEXT COLLATE NOCASE,
+    before_state TEXT,
+    after_state TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS analytics_honeypot (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT,
+    ip_hash TEXT,
+    route TEXT NOT NULL,
+    user_agent TEXT,
+    headers TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_analytics_events_session ON analytics_events(session_id);
+  CREATE INDEX IF NOT EXISTS idx_analytics_anomalies_severity ON analytics_anomalies(severity);
+  CREATE INDEX IF NOT EXISTS idx_analytics_fingerprints_user ON analytics_fingerprints(username);
+`);
+
 module.exports = db;

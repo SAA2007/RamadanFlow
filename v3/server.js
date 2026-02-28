@@ -42,6 +42,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const { authMiddleware, adminMiddleware } = require('./middleware/auth');
+const { analyticsMiddleware, honeypotHandler, honeypotFieldCheck } = require('./middleware/analytics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +54,9 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet({ contentSecurityPolicy: false })); // Security headers
 app.use(cors());
 app.use(express.json());
+
+// Analytics middleware — tracks every request for security telemetry
+app.use(analyticsMiddleware);
 
 // Rate limit for auth routes (5 attempts per minute per IP)
 const authLimiter = rateLimit({
@@ -76,8 +80,8 @@ app.get('/', function (req, res) {
 // API ROUTES
 // ===================================================================
 
-// Auth — rate-limited, public (login/register)
-app.use('/api/auth', authLimiter, require('./routes/auth'));
+// Auth — rate-limited, public (login/register), with honeypot field check
+app.use('/api/auth', authLimiter, honeypotFieldCheck, require('./routes/auth'));
 
 // Protected routes — require JWT
 app.use('/api/taraweeh', authMiddleware, require('./routes/taraweeh'));
@@ -91,6 +95,16 @@ app.use('/api/ramadan', authMiddleware, require('./routes/ramadan'));
 
 // Admin routes — require JWT + admin role
 app.use('/api/admin', authMiddleware, adminMiddleware, require('./routes/admin'));
+
+// Analytics routes — mixed auth (fingerprint/events are public, admin feeds require admin)
+app.use('/api/analytics', require('./routes/analytics'));
+
+// Honeypot routes — fake endpoints that flag callers
+app.get('/api/export', honeypotHandler({ success: true, data: [], format: 'csv', message: 'Export queued' }));
+app.get('/api/users/all', honeypotHandler({ success: true, users: [], total: 0, page: 1 }));
+app.get('/admin/backup', honeypotHandler({ success: true, backup_id: 'bk_' + Date.now(), status: 'queued' }));
+app.get('/admin/dump', honeypotHandler({ success: true, tables: [], format: 'sql' }));
+app.get('/api/debug', honeypotHandler({ success: true, debug: true, env: 'production', uptime: process.uptime() }));
 
 // ===================================================================
 // SPA FALLBACK — serve index.html for all non-API routes
