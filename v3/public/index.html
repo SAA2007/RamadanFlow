@@ -424,76 +424,11 @@
 
                 <div class="card">
                     <div class="card-header">
-                        <h2>📅 Ramadan Start Dates</h2>
-                    </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Set official Ramadan start
-                        dates per region. Admin dates take priority over API data.</p>
-
-                    <div id="ramadanDateEditor" style="display:flex;flex-direction:column;gap:16px">
-                        <!-- KSA -->
-                        <div
-                            style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm)">
-                            <span style="min-width:30px">🇸🇦</span>
-                            <strong style="min-width:60px">KSA</strong>
-                            <input type="date" id="rdKsa"
-                                style="flex:1;min-width:140px;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-family:'Inter',sans-serif">
-                            <input type="text" id="rdKsaNote" placeholder="Note (optional)"
-                                style="flex:1;min-width:120px;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:12px">
-                            <span id="rdKsaBadge"
-                                style="display:none;font-size:11px;background:#27ae60;color:#fff;padding:2px 8px;border-radius:10px">✓
-                                Admin</span>
-                            <button class="btn btn-primary btn-sm" onclick="saveRamadanDate('ksa')">Save</button>
-                            <button class="btn btn-secondary btn-sm" onclick="clearRamadanDate('ksa')">Clear</button>
-                        </div>
-
-                        <!-- PAK -->
-                        <div
-                            style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm)">
-                            <span style="min-width:30px">🇵🇰</span>
-                            <strong style="min-width:60px">PAK</strong>
-                            <input type="date" id="rdPak"
-                                style="flex:1;min-width:140px;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-family:'Inter',sans-serif">
-                            <input type="text" id="rdPakNote" placeholder="Note (optional)"
-                                style="flex:1;min-width:120px;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:12px">
-                            <span id="rdPakBadge"
-                                style="display:none;font-size:11px;background:#27ae60;color:#fff;padding:2px 8px;border-radius:10px">✓
-                                Admin</span>
-                            <button class="btn btn-primary btn-sm" onclick="saveRamadanDate('pak')">Save</button>
-                            <button class="btn btn-secondary btn-sm" onclick="clearRamadanDate('pak')">Clear</button>
-                        </div>
-
-                        <!-- AZ -->
-                        <div
-                            style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm)">
-                            <span style="min-width:30px">🇦🇿</span>
-                            <strong style="min-width:60px">AZ</strong>
-                            <input type="date" id="rdAz"
-                                style="flex:1;min-width:140px;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-family:'Inter',sans-serif">
-                            <input type="text" id="rdAzNote" placeholder="Note (optional)"
-                                style="flex:1;min-width:120px;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:12px">
-                            <span id="rdAzBadge"
-                                style="display:none;font-size:11px;background:#27ae60;color:#fff;padding:2px 8px;border-radius:10px">✓
-                                Admin</span>
-                            <button class="btn btn-primary btn-sm" onclick="saveRamadanDate('az')">Save</button>
-                            <button class="btn btn-secondary btn-sm" onclick="clearRamadanDate('az')">Clear</button>
-                        </div>
-
-                        <!-- Notify checkbox -->
-                        <label
-                            style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);cursor:pointer">
-                            <input type="checkbox" id="rdNotify"
-                                style="accent-color:var(--gold);width:18px;height:18px">
-                            Notify all users when saving (posts announcement banner)
-                        </label>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
                         <h2>🌍 Ramadan Calendar Region</h2>
                     </div>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Select the default calendar
-                        calculation region (used by Aladhan API when no admin date is set).</p>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Select the official region
+                        to track the start of Ramadan for your family. This will automatically adjust the calendar dates
+                        for everyone.</p>
                     <div style="display:flex;gap:8px;align-items:center">
                         <select id="adminRegionSelect"
                             style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
@@ -502,6 +437,18 @@
                             <option value="Azerbaijan,Baku">🇦🇿 Azerbaijan (Baku)</option>
                         </select>
                         <button class="btn btn-primary btn-sm" onclick="saveAdminRegion()">Save Region</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📅 Ramadan Start Dates</h2>
+                    </div>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Set exact start dates per
+                        region. Admin dates override both the hardcoded map and the Aladhan API. Check "Notify" to
+                        announce via banner.</p>
+                    <div id="adminRamadanDates" style="display:flex;flex-direction:column;gap:4px">
+                        <!-- Populated by JS -->
                     </div>
                 </div>
 

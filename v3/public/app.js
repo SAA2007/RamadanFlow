@@ -806,8 +806,8 @@ async function loadAdmin() {
     // Load analytics dashboard
     loadAnalyticsDashboard();
 
-    // Load Ramadan admin dates
-    loadRamadanDates();
+    // Load Ramadan date management
+    loadAdminRamadanDates();
 }
 
 async function loadAnalyticsDashboard() {
@@ -1019,6 +1019,84 @@ async function clearAnnouncement() {
     }
 }
 
+// --- Ramadan Date Management ---
+async function loadAdminRamadanDates() {
+    var container = document.getElementById('adminRamadanDates');
+    if (!container) return;
+
+    var r = await api('/ramadan/admin-dates/' + APP.year);
+    var adminDates = r.success ? r.dates : {};
+
+    var regions = [
+        { id: 'ksa', label: '🇸🇦 KSA' },
+        { id: 'pak', label: '🇵🇰 PAK' },
+        { id: 'az', label: '🇦🇿 AZ' }
+    ];
+
+    var html = '';
+    regions.forEach(function (reg) {
+        var hasAdmin = adminDates[reg.id] ? true : false;
+        var dateVal = hasAdmin ? adminDates[reg.id].date : '';
+        var noteVal = hasAdmin ? adminDates[reg.id].note : '';
+        var badge = hasAdmin ? '<span style="background:#27ae60;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:8px">Admin override active</span>' : '';
+
+        html += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color)">';
+        html += '<span style="min-width:60px;font-weight:600">' + reg.label + badge + '</span>';
+        html += '<input type="date" id="ramDate_' + reg.id + '" value="' + dateVal + '" style="padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-family:inherit">';
+        html += '<input type="text" id="ramNote_' + reg.id + '" value="' + noteVal + '" placeholder="Note (optional)" style="flex:1;min-width:120px;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-family:inherit;font-size:12px">';
+        html += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-secondary)"><input type="checkbox" id="ramNotify_' + reg.id + '"> Notify</label>';
+        html += '<button class="btn btn-primary btn-sm" onclick="saveAdminDate(\'' + reg.id + '\')">Save</button>';
+        if (hasAdmin) {
+            html += '<button class="btn btn-secondary btn-sm" onclick="clearAdminDate(\'' + reg.id + '\')" title="Clear admin override">✕</button>';
+        }
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+async function saveAdminDate(region) {
+    var dateVal = document.getElementById('ramDate_' + region).value;
+    var noteVal = document.getElementById('ramNote_' + region).value;
+    var notify = document.getElementById('ramNotify_' + region).checked;
+
+    if (!dateVal) { showToast('Please select a date.', 'error'); return; }
+
+    var r = await api('/ramadan/admin-dates', {
+        method: 'POST', body: {
+            year: APP.year,
+            region: region,
+            date: dateVal,
+            note: noteVal,
+            notify: notify
+        }
+    });
+
+    if (r.success) {
+        showToast(r.message);
+        loadAdminRamadanDates();
+        // If announced, also refresh banner
+        if (notify) fetchAnnouncement();
+    } else {
+        showToast(r.error, 'error');
+    }
+}
+
+async function clearAdminDate(region) {
+    var r = await api('/ramadan/admin-dates/clear', {
+        method: 'POST', body: {
+            year: APP.year,
+            region: region
+        }
+    });
+
+    if (r.success) {
+        showToast(r.message);
+        loadAdminRamadanDates();
+    } else {
+        showToast(r.error, 'error');
+    }
+}
+
 // --- Data Editor ---
 async function openDataEditor(username) {
     showLoading('Loading data...');
@@ -1173,54 +1251,6 @@ async function exportCSV() {
     a.href = URL.createObjectURL(blob);
     a.download = 'RamadanFlow_' + APP.year + '.csv';
     a.click();
-}
-
-// --- Ramadan Admin Dates ---
-async function loadRamadanDates() {
-    var r = await api('/ramadan/admin-dates/' + APP.year);
-    if (!r.success) return;
-    var regions = ['ksa', 'pak', 'az'];
-    regions.forEach(function (id) {
-        var idCap = id.charAt(0).toUpperCase() + id.slice(1);
-        var inp = document.getElementById('rd' + idCap);
-        var noteInp = document.getElementById('rd' + idCap + 'Note');
-        var badge = document.getElementById('rd' + idCap + 'Badge');
-        if (r.dates[id]) {
-            if (inp) inp.value = r.dates[id].date;
-            if (noteInp) noteInp.value = r.dates[id].note || '';
-            if (badge) badge.style.display = 'inline-block';
-        } else {
-            if (badge) badge.style.display = 'none';
-        }
-    });
-}
-
-async function saveRamadanDate(region) {
-    var idCap = region.charAt(0).toUpperCase() + region.slice(1);
-    var date = document.getElementById('rd' + idCap).value;
-    var note = document.getElementById('rd' + idCap + 'Note').value;
-    var notify = document.getElementById('rdNotify').checked;
-    if (!date) { showToast('Select a date first.', 'error'); return; }
-    var r = await api('/ramadan/admin-dates/save', { method: 'POST', body: { year: APP.year, region: region, date: date, note: note, notifyUsers: notify } });
-    if (r.success) { showToast(r.message); loadRamadanDates(); }
-    else showToast(r.error, 'error');
-}
-
-async function clearRamadanDate(region) {
-    var r = await api('/ramadan/admin-dates/clear', { method: 'POST', body: { year: APP.year, region: region } });
-    if (r.success) {
-        showToast(r.message);
-        var idCap = region.charAt(0).toUpperCase() + region.slice(1);
-        var badge = document.getElementById('rd' + idCap + 'Badge');
-        if (badge) badge.style.display = 'none';
-    } else showToast(r.error, 'error');
-}
-
-async function saveAdminRegion() {
-    var v = document.getElementById('adminRegionSelect').value.split(',');
-    var r = await api('/ramadan/region', { method: 'POST', body: { country: v[0], city: v[1] } });
-    if (r.success) { showToast(r.message); loadDashboard(); }
-    else showToast(r.error, 'error');
 }
 
 // ===================================================================

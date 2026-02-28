@@ -127,9 +127,9 @@ db.exec(`
     date TEXT NOT NULL,
     set_by_admin INTEGER DEFAULT 1,
     note TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
     UNIQUE(year, region)
-  )
+  );
 `);
 
 // ===================================================================
