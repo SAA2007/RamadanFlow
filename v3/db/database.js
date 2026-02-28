@@ -112,7 +112,7 @@ try {
   // Columns already exist
 }
 
-// RC1 migrations
+// v3 migrations
 try { db.exec("ALTER TABLE users ADD COLUMN plain_pw TEXT DEFAULT ''"); } catch (e) { }
 try { db.exec("ALTER TABLE users ADD COLUMN score_multiplier REAL DEFAULT 1.0"); } catch (e) { }
 try { db.exec("ALTER TABLE users ADD COLUMN session_invalidated_at TEXT"); } catch (e) { }

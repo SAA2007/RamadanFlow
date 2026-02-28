@@ -1,4 +1,4 @@
-# 🕌 RamadanFlow v3.RC1
+# 🕌 RamadanFlow v3.1.0
 
 Family Ramadan progress tracker — self-hosted on Raspberry Pi. Track Taraweeh, Quran, Fasting, Azkar, Surah memorization, and daily Namaz for your entire family.
 
@@ -14,18 +14,41 @@ Family Ramadan progress tracker — self-hosted on Raspberry Pi. Track Taraweeh,
 - **Badges** — Achievement system (streaks, khatams, fasting, etc.)
 - **Responsive** — Desktop sidebar + mobile bottom nav, no horizontal scroll
 - **Multi-Region Ramadan** — KSA, Pakistan, Azerbaijan start date support
+- **Smart Popups** — Viewport-aware positioning, mobile bottom sheets
 
 ### Admin Powers
 
 - 👑 Full user management (create/delete/promote/demote)
 - 👁 Password viewer with reveal toggle
+- 🔐 Password reset per user
 - 📝 Full data editor per user (all trackers, audit-logged)
+- 📥 Per-user data export (JSON download)
+- 📊 Per-user analytics view (anomaly summary)
 - 🚀 Per-user score multiplier (0.1x–5.0x)
 - ❄ Score freeze (lock accounts from new entries)
 - ⛔ Force re-login (invalidate JWT sessions)
 - 👤 Impersonate user (read-only preview mode)
 - 📢 Announcement banner (visible to all users)
-- 📥 CSV data export
+- 📥 Bulk CSV/JSON data export
+
+### Security Analytics
+
+- ⚠️ Anomaly feed with severity/type/user/date range filters
+- 🍯 Honeypot hit log with parsed User Agents
+- 🔑 Fingerprint consistency scores with expandable session details
+- ⌨️ Typing baseline deviation tracking
+- 📡 Live request log (auto-refresh 10s, color-coded response times)
+- 🗑 Bulk anomaly clear
+- 📥 Anomaly CSV export
+- 🛡 False positive suppression toggle
+
+### Tools
+
+- 📢 Announcement set/clear
+- 📥 JSON + CSV bulk export
+- 🗄 Database stats (file size, row counts per table)
+- 🔄 WAL checkpoint with timing info
+- 📋 Audit log (all admin actions, timestamped)
 
 ## Setup
 
