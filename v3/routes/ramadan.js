@@ -3,6 +3,19 @@ const db = require('../db/database');
 
 const router = express.Router();
 
+// ---------------------------------------------------------------
+// HARDCODED OVERRIDES — takes priority over Aladhan API
+// Add new years here when the API returns incorrect start dates.
+// Format: { year: { regionId: 'YYYY-MM-DD' } }
+// ---------------------------------------------------------------
+const RAMADAN_OVERRIDES = {
+    2026: {
+        ksa: '2026-02-18',
+        pak: '2026-02-19',
+        az: '2026-02-19'
+    }
+};
+
 // GET /api/ramadan/region
 router.get('/region', (req, res) => {
     try {
@@ -25,7 +38,8 @@ router.post('/region', async (req, res) => {
     try {
         db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('ramadan_region', JSON.stringify({ country, city }));
         // Invalidate the dates cache so it fetches again
-        db.prepare('DELETE FROM settings WHERE key LIKE ?').run('ramadan_%_dates'); // Assuming we change key to avoid collision with settings like ramadan_region
+        db.prepare('DELETE FROM settings WHERE key LIKE ?').run('ramadan_%_dates');
+        db.prepare('DELETE FROM settings WHERE key LIKE ?').run('ramadan_all_regions_%');
         res.json({ success: true, message: 'Region updated to ' + country + ' (' + city + ')' });
     } catch (err) {
         res.json({ success: false, error: 'Database error' });
@@ -41,7 +55,16 @@ router.get('/all-regions/:year', async (req, res) => {
         // Check cache
         const cached = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
         if (cached) {
-            try { return res.json({ success: true, regions: JSON.parse(cached.value) }); } catch (e) { }
+            try {
+                let regions = JSON.parse(cached.value);
+                // Apply overrides even to cached data
+                if (RAMADAN_OVERRIDES[year]) {
+                    Object.keys(RAMADAN_OVERRIDES[year]).forEach(id => {
+                        if (regions[id]) regions[id].start = RAMADAN_OVERRIDES[year][id];
+                    });
+                }
+                return res.json({ success: true, regions });
+            } catch (e) { }
         }
 
         const regionsToCheck = [
@@ -73,6 +96,13 @@ router.get('/all-regions/:year', async (req, res) => {
                     results[r.id] = { name: r.name, start: ramadanStart };
                 }
             }
+        }
+
+        // Apply hardcoded overrides (takes priority over API)
+        if (RAMADAN_OVERRIDES[year]) {
+            Object.keys(RAMADAN_OVERRIDES[year]).forEach(id => {
+                if (results[id]) results[id].start = RAMADAN_OVERRIDES[year][id];
+            });
         }
 
         db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, JSON.stringify(results));
