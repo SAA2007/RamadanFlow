@@ -59,6 +59,16 @@ function goToPage(page) {
     var targetId = page.toLowerCase() + 'Wrapper';
     var el = document.getElementById(targetId);
     if (el) el.style.display = 'block';
+
+    // Reset auth button states when navigating to login/register
+    if (page === 'Login') {
+        var loginBtn = document.getElementById('loginBtn');
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Sign In'; }
+    }
+    if (page === 'Register') {
+        var regBtn = document.getElementById('registerBtn');
+        if (regBtn) { regBtn.disabled = false; regBtn.textContent = 'Create Account'; }
+    }
 }
 
 // ===================================================================
@@ -127,6 +137,8 @@ async function handleRegister(e) {
     var result = await api('/auth/register', { method: 'POST', body: { username: username, email: email, password: password, gender: gender, age: age } });
     if (result.success) {
         showRegisterAlert(result.message, 'success');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
         setTimeout(function () { goToPage('Login'); }, 1500);
     } else {
         showRegisterAlert(result.error, 'error');
@@ -612,6 +624,7 @@ const BADGE_DEFS = [
     { emoji: '👑', name: 'Iron Man', desc: 'Score over 1000', hidden: true, check: function (s) { return s.score >= 1000; } }
 ];
 function renderCharts() {
+    if (!APP.dashboardData || !APP.dashboardData.summaries) return;
     var data = APP.dashboardData.summaries;
     if (!data || data.length === 0) return;
 
@@ -640,6 +653,7 @@ function renderCharts() {
 
 
 function renderLeaderboard() {
+    if (!APP.dashboardData || !APP.dashboardData.summaries) return;
     var data = APP.dashboardData.summaries;
     var html = '<table class="family-table"><thead><tr><th>#</th><th>Name</th><th>🏅</th><th>🕌</th><th>🔥</th><th>📖</th><th>🍽️</th><th>Score</th></tr></thead><tbody>';
     data.forEach(function (s, i) {

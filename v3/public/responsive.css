@@ -325,6 +325,44 @@
         font-size: 22px;
     }
 
+    .stat-card .card-header h2 {
+        font-size: 16px;
+    }
+
+    /* Region start dots: colour dots only on mobile, hide text */
+    .region-start-dot {
+        font-size: 0 !important;
+        width: 8px !important;
+        height: 8px !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        display: inline-block !important;
+        margin: 1px;
+    }
+
+    .region-start-dot.ksa-badge {
+        background: #2ecc71 !important;
+    }
+
+    .region-start-dot.pak-badge {
+        background: #1abc9c !important;
+    }
+
+    .region-start-dot.az-badge {
+        background: #3498db !important;
+    }
+
+    /* Region badges in header — smaller on mobile */
+    .region-badge {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+    }
+
+    /* iOS Safari safe area — main content bottom padding */
+    .main-content {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    }
+
     .stat-card .stat-label {
         font-size: 10px;
     }
