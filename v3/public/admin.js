@@ -200,7 +200,8 @@ async function revealPassword(username) {
     try {
         var data = await api('/admin/reveal-password/' + username);
         if (data.success) {
-            inline.innerHTML = '\uD83D\uDD11 <code>' + data.plain_pw + '</code> <button class="btn btn-secondary btn-sm" style="margin-left:8px;font-size:11px" onclick="navigator.clipboard.writeText(\'' + data.plain_pw.replace(/'/g, "\\'") + '\');this.textContent=\'Copied!\'">\uD83D\uDCCB Copy</button>';
+            var pw = data.password || 'unavailable';
+            inline.innerHTML = '\uD83D\uDD11 <code>' + pw + '</code> <button class="btn btn-secondary btn-sm" style="margin-left:8px;font-size:11px" onclick="navigator.clipboard.writeText(\'' + pw.replace(/'/g, "\\'") + '\');this.textContent=\'Copied!\'">\uD83D\uDCCB Copy</button>';
         } else {
             inline.innerHTML = '\u274C ' + (data.error || 'Failed');
         }
@@ -640,11 +641,14 @@ function exitAdminEdit() {
 // --- Export ---
 async function exportCSV() {
     try {
-        var data = await api('/admin/export');
+        var data = await api('/admin/export/' + APP.year);
         if (!data.success) { showToast('Export failed', 'error'); return; }
-        var csv = 'username,type,date,data\n';
-        (data.export || []).forEach(function (row) {
-            csv += [row.username || '', row.type || '', row.date || '', JSON.stringify(row.data || {}).replace(/,/g, ';')].join(',') + '\n';
+        var allData = data.data || {};
+        var csv = 'tracker,username,date,detail\n';
+        ['taraweeh', 'fasting', 'azkar', 'namaz'].forEach(function (t) {
+            (allData[t] || []).forEach(function (row) {
+                csv += [t, row.username || '', row.date || '', JSON.stringify(row).replace(/,/g, ';')].join(',') + '\n';
+            });
         });
         var blob = new Blob([csv], { type: 'text/csv' });
         var a = document.createElement('a');
@@ -656,9 +660,9 @@ async function exportCSV() {
 
 async function exportJSON() {
     try {
-        var data = await api('/admin/export');
+        var data = await api('/admin/export/' + APP.year);
         if (!data.success) { showToast('Export failed', 'error'); return; }
-        var blob = new Blob([JSON.stringify(data.export || [], null, 2)], { type: 'application/json' });
+        var blob = new Blob([JSON.stringify(data.data || {}, null, 2)], { type: 'application/json' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'RamadanFlow_' + APP.year + '.json';

@@ -458,7 +458,8 @@
                         <span class="admin-section-chevron">▼</span>
                     </div>
                     <div class="admin-section-body">
-                        <input type="text" class="admin-user-search" id="adminSearch" placeholder="🔍 Search by name or email..." oninput="filterAdminUsers()">
+                        <input type="text" class="admin-user-search" id="adminSearch"
+                            placeholder="🔍 Search by name or email..." oninput="filterAdminUsers()">
                         <div class="admin-user-grid" id="adminUserList"></div>
                     </div>
                 </div>
@@ -471,9 +472,11 @@
                         <span class="admin-section-chevron">▼</span>
                     </div>
                     <div class="admin-section-body">
-                        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Region selector + date overrides. Admin dates take priority over hardcoded overrides and the Aladhan API.</p>
+                        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Region selector + date
+                            overrides. Admin dates take priority over hardcoded overrides and the Aladhan API.</p>
                         <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-                            <select id="adminRegionSelect" style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
+                            <select id="adminRegionSelect"
+                                style="flex:1;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif">
                                 <option value="Saudi Arabia,Makkah">🇸🇦 Saudi Arabia (Makkah)</option>
                                 <option value="Pakistan,Islamabad">🇵🇰 Pakistan (Islamabad)</option>
                                 <option value="Azerbaijan,Baku">🇦🇿 Azerbaijan (Baku)</option>
@@ -493,7 +496,8 @@
                     </div>
                     <div class="admin-section-body">
                         <!-- Anomaly Feed -->
-                        <h4 style="color:var(--gold);margin:0 0 8px">⚠️ Anomaly Feed <span id="anomalyNewPill" class="new-anomaly-pill" style="display:none" onclick="loadAnomalies()"></span></h4>
+                        <h4 style="color:var(--gold);margin:0 0 8px">⚠️ Anomaly Feed <span id="anomalyNewPill"
+                                class="new-anomaly-pill" style="display:none" onclick="loadAnomalies()"></span></h4>
                         <div class="admin-filter-bar">
                             <select id="anomalyFilterSeverity" onchange="applyAnomalyFilters()">
                                 <option value="">All Severity</option>
@@ -504,40 +508,53 @@
                             <select id="anomalyFilterType" onchange="applyAnomalyFilters()">
                                 <option value="">All Types</option>
                             </select>
-                            <input type="text" id="anomalyFilterUser" placeholder="Username..." oninput="applyAnomalyFilters()">
-                            <label class="admin-toggle"><input type="checkbox" id="anomalySuppressToggle" onchange="loadAnomalies()"> Suppress false positives</label>
+                            <input type="text" id="anomalyFilterUser" placeholder="Username..."
+                                oninput="applyAnomalyFilters()">
+                            <label class="admin-toggle"><input type="checkbox" id="anomalySuppressToggle"
+                                    onchange="loadAnomalies()"> Suppress false positives</label>
                         </div>
                         <div class="table-scroll-wrap">
                             <div id="anomalyFeed">Loading...</div>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:10px">
-                            <button class="btn btn-secondary btn-sm" onclick="exportAnomaliesCSV()">📥 Export CSV</button>
-                            <button class="btn btn-secondary btn-sm" style="color:var(--red)" onclick="clearAllAnomalies()">🗑 Clear All</button>
+                            <button class="btn btn-secondary btn-sm" onclick="exportAnomaliesCSV()">📥 Export
+                                CSV</button>
+                            <button class="btn btn-secondary btn-sm" style="color:var(--red)"
+                                onclick="clearAllAnomalies()">🗑 Clear All</button>
                         </div>
 
                         <hr style="border-color:var(--border-color);margin:20px 0">
 
                         <!-- Honeypot -->
                         <h4 style="color:var(--red);margin:0 0 8px">🍯 Honeypot Hits</h4>
-                        <div class="table-scroll-wrap"><div id="honeypotLog">Loading...</div></div>
+                        <div class="table-scroll-wrap">
+                            <div id="honeypotLog">Loading...</div>
+                        </div>
 
                         <hr style="border-color:var(--border-color);margin:20px 0">
 
                         <!-- Fingerprints -->
                         <h4 style="color:var(--green, #2ecc71);margin:0 0 8px">🔑 Fingerprint Consistency</h4>
-                        <div class="table-scroll-wrap"><div id="fingerprintScores">Loading...</div></div>
+                        <div class="table-scroll-wrap">
+                            <div id="fingerprintScores">Loading...</div>
+                        </div>
 
                         <hr style="border-color:var(--border-color);margin:20px 0">
 
                         <!-- Typing -->
                         <h4 style="color:var(--blue, #3498db);margin:0 0 8px">⌨️ Typing Baseline</h4>
-                        <div class="table-scroll-wrap"><div id="typingBaseline">Loading...</div></div>
+                        <div class="table-scroll-wrap">
+                            <div id="typingBaseline">Loading...</div>
+                        </div>
 
                         <hr style="border-color:var(--border-color);margin:20px 0">
 
                         <!-- Live Request Log -->
-                        <h4 style="color:var(--text-primary);margin:0 0 8px">📡 Live Request Log <span style="font-size:11px;color:var(--text-muted)">(auto-refreshes 10s)</span></h4>
-                        <div class="table-scroll-wrap"><div id="liveRequestLog">Loading...</div></div>
+                        <h4 style="color:var(--text-primary);margin:0 0 8px">📡 Live Request Log <span
+                                style="font-size:11px;color:var(--text-muted)">(auto-refreshes 10s)</span></h4>
+                        <div class="table-scroll-wrap">
+                            <div id="liveRequestLog">Loading...</div>
+                        </div>
                     </div>
                 </div>
 
@@ -551,208 +568,140 @@
                         <div class="admin-tools-grid">
                             <div class="admin-tool-card">
                                 <h4>📢 Announcement</h4>
-                                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px" id="currentAnnouncementPreview">No active announcement.</p>
-                                <textarea id="adminAnnouncementInput" rows="2" placeholder="Type announcement..." style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif;resize:vertical;margin-bottom:8px"></textarea>
+                                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px"
+                                    id="currentAnnouncementPreview">No active announcement.</p>
+                                <textarea id="adminAnnouncementInput" rows="2" placeholder="Type announcement..."
+                                    style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Inter',sans-serif;resize:vertical;margin-bottom:8px"></textarea>
                                 <div style="display:flex;gap:8px">
                                     <button class="btn btn-primary btn-sm" onclick="setAnnouncement()">Set</button>
-                                    <button class="btn btn-secondary btn-sm" onclick="clearAnnouncement()">Clear</button>
+                                    <button class="btn btn-secondary btn-sm"
+                                        onclick="clearAnnouncement()">Clear</button>
                                 </div>
                             </div>
                             <div class="admin-tool-card">
                                 <h4>📥 Export Data</h4>
-                                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Download all user tracker data.</p>
+                                <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Download all
+                                    user tracker data.</p>
                                 <div style="display:flex;flex-direction:column;gap:6px">
-                                    <button class="btn btn-secondary btn-sm" onclick="exportJSON()">📥 Download JSON</button>
-                                    <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📥 Download CSV</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="exportJSON()">📥 Download
+                                        JSON</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📥 Download
+                                        CSV</button>
                                 </div>
                             </div>
                             <div class="admin-tool-card">
                                 <h4>🗄️ Database Stats</h4>
-                                <div id="dbStatsContainer" style="font-size:12px;color:var(--text-secondary)">Loading...</div>
-                                <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="runWALCheckpoint()">🔄 WAL Checkpoint</button>
+                                <div id="dbStatsContainer" style="font-size:12px;color:var(--text-secondary)">Loading...
+                                </div>
+                                <button class="btn btn-secondary btn-sm" style="margin-top:8px"
+                                    onclick="runWALCheckpoint()">🔄 WAL Checkpoint</button>
                                 <div id="checkpointResult" class="action-status"></div>
                             </div>
                             <div class="admin-tool-card">
                                 <h4>📋 Audit Log</h4>
-                                <div class="table-scroll-wrap" style="max-height:200px;overflow-y:auto"><div id="auditLogContainer">Loading...</div></div>
+                                <div class="table-scroll-wrap" style="max-height:200px;overflow-y:auto">
+                                    <div id="auditLogContainer">Loading...</div>
+                                </div>
                             </div>
+                        </div><!-- admin-section tools -->
+
+                    </div><!-- tab-admin -->
+
+                </div><!-- main-content -->
+
+                <!-- Taraweeh/Namaz/Azkar modals removed — now rendered dynamically by openSmartPopup() -->
+
+                <!-- PROFILE MODAL -->
+                <div class="modal-overlay hidden" id="profileModal">
+                    <div class="modal">
+                        <h3>👤 My Profile</h3>
+                        <div class="profile-info">
+                            <span class="label">Username</span><span class="value" id="profileUsername"></span>
+                            <span class="label">Email</span><span class="value" id="profileEmail"></span>
+                            <span class="label">Role</span><span class="value" id="profileRole"></span>
+                        </div>
+                        <hr style="border-color:var(--border-color);margin:16px 0">
+                        <h3 style="font-size:15px">🔑 Change Password</h3>
+                        <div class="form-group"><label>Current Password</label><input type="password" id="oldPassword"
+                                placeholder="Enter current password"></div>
+                        <div class="form-group"><label>New Password</label><input type="password" id="newPassword"
+                                placeholder="Min 4 characters"></div>
+                        <div class="form-group"><label>Confirm New Password</label><input type="password"
+                                id="confirmNewPassword" placeholder="Re-enter new password"></div>
+                        <div class="modal-actions">
+                            <button class="btn btn-secondary" onclick="closeProfile()">Close</button>
+                            <button class="btn btn-primary" onclick="changePasswordSubmit()">Update Password</button>
                         </div>
                     </div>
                 </div>
 
-            </div>
-
-        </div><!-- main-content -->
-
-        <!-- TARAWEEH MODAL -->
-        <div class="modal-overlay hidden" id="taraweehModal">
-            <div class="modal">
-                <h3>🕌 Log Taraweeh — <span id="taraweehModalDate"></span></h3>
-                <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">How many rakaat?</p>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
-                    <input type="number" id="rakaatInput" min="2" max="20" step="2" value="8"
-                        style="width:80px;padding:12px;font-size:20px;font-weight:700;text-align:center;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--gold);font-family:'Inter',sans-serif">
-                    <span style="color:var(--text-secondary);font-size:14px">rakaat (2–20)</span>
-                </div>
-                <div style="display:flex;gap:8px;margin-top:8px">
-                    <button class="btn btn-secondary btn-sm"
-                        onclick="document.getElementById('rakaatInput').value=8">8</button>
-                    <button class="btn btn-secondary btn-sm"
-                        onclick="document.getElementById('rakaatInput').value=20">20</button>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeTaraweehModal()">Cancel</button>
-                    <button class="btn btn-danger btn-sm" id="taraweehRemoveBtn" onclick="removeTaraweeh()"
-                        style="display:none">Remove</button>
-                    <button class="btn btn-primary" onclick="saveTaraweeh()">Save ✓</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- NAMAZ MODAL -->
-        <div class="modal-overlay hidden" id="namazModal">
-            <div class="modal">
-                <h3>🕌 Log Namaz — <span id="namazModalDate"></span></h3>
-                <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Select location for each
-                    prayer.</p>
-                <div id="namazModalGrid" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-                    <!-- Populated by JS -->
-                </div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeNamazModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveNamazDay()">Save ✓</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- AZKAR MODAL -->
-        <div class="modal-overlay hidden" id="azkarModal">
-            <div class="modal">
-                <h3>📿 Log Azkar — <span id="azkarModalDate"></span></h3>
-                <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px">Which daily Dhikr have you
-                    completed?</p>
-
-                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
-                    <label
-                        style="display:flex;align-items:center;padding:16px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;gap:16px">
-                        <input type="checkbox" id="azkarMorningCheck"
-                            style="width:24px;height:24px;accent-color:var(--gold)">
-                        <div style="flex:1">
-                            <div style="font-weight:600;font-size:16px">☀️ Morning Azkar</div>
-                            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">After Fajr to Sunrise
-                            </div>
+                <!-- DATA EDITOR MODAL -->
+                <div class="modal-overlay hidden" id="dataEditorModal">
+                    <div class="modal" style="max-height:85vh;overflow-y:auto">
+                        <h3 id="dataEditorTitle">📝 Edit Data</h3>
+                        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Modify values and click
+                            Save.
+                            All changes are audit-logged.</p>
+                        <div id="dataEditorContent" style="max-height:50vh;overflow-y:auto;padding-right:8px">
                         </div>
-                    </label>
-
-                    <label
-                        style="display:flex;align-items:center;padding:16px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);cursor:pointer;gap:16px">
-                        <input type="checkbox" id="azkarEveningCheck"
-                            style="width:24px;height:24px;accent-color:var(--gold)">
-                        <div style="flex:1">
-                            <div style="font-weight:600;font-size:16px">🌙 Evening Azkar</div>
-                            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">After Asr to Maghrib
-                            </div>
+                        <div class="modal-actions" style="margin-top:16px">
+                            <button class="btn btn-secondary" onclick="closeDataEditor()">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveDataEditor()">Save Changes ✓</button>
                         </div>
-                    </label>
+                    </div>
                 </div>
 
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeAzkarModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveAzkarDay()">Save ✓</button>
+                <!-- LOADING OVERLAY -->
+                <div class="loading-overlay hidden" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <p>Loading...</p>
                 </div>
-            </div>
-        </div>
 
-        <!-- PROFILE MODAL -->
-        <div class="modal-overlay hidden" id="profileModal">
-            <div class="modal">
-                <h3>👤 My Profile</h3>
-                <div class="profile-info">
-                    <span class="label">Username</span><span class="value" id="profileUsername"></span>
-                    <span class="label">Email</span><span class="value" id="profileEmail"></span>
-                    <span class="label">Role</span><span class="value" id="profileRole"></span>
-                </div>
-                <hr style="border-color:var(--border-color);margin:16px 0">
-                <h3 style="font-size:15px">🔑 Change Password</h3>
-                <div class="form-group"><label>Current Password</label><input type="password" id="oldPassword"
-                        placeholder="Enter current password"></div>
-                <div class="form-group"><label>New Password</label><input type="password" id="newPassword"
-                        placeholder="Min 4 characters"></div>
-                <div class="form-group"><label>Confirm New Password</label><input type="password"
-                        id="confirmNewPassword" placeholder="Re-enter new password"></div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeProfile()">Close</button>
-                    <button class="btn btn-primary" onclick="changePasswordSubmit()">Update Password</button>
-                </div>
-            </div>
-        </div>
+            </div><!-- dashboardWrapper -->
 
-        <!-- DATA EDITOR MODAL -->
-        <div class="modal-overlay hidden" id="dataEditorModal">
-            <div class="modal" style="max-height:85vh;overflow-y:auto">
-                <h3 id="dataEditorTitle">📝 Edit Data</h3>
-                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Modify values and click Save.
-                    All changes are audit-logged.</p>
-                <div id="dataEditorContent" style="max-height:50vh;overflow-y:auto;padding-right:8px">
-                </div>
-                <div class="modal-actions" style="margin-top:16px">
-                    <button class="btn btn-secondary" onclick="closeDataEditor()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveDataEditor()">Save Changes ✓</button>
-                </div>
-            </div>
-        </div>
+            <!-- BOTTOM NAV (Mobile only, hidden by CSS on desktop) -->
+            <nav class="bottom-nav" id="bottomNav">
+                <button class="bottom-nav-item active" data-tab="taraweeh" onclick="switchTab('taraweeh')">
+                    <span class="nav-icon">🕌</span>
+                    <span>Taraweeh</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="quran" onclick="switchTab('quran')">
+                    <span class="nav-icon">📖</span>
+                    <span>Quran</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="fasting" onclick="switchTab('fasting')">
+                    <span class="nav-icon">🍽️</span>
+                    <span>Fasting</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="azkar" onclick="switchTab('azkar')">
+                    <span class="nav-icon">📿</span>
+                    <span>Azkar</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="surah" onclick="switchTab('surah')">
+                    <span class="nav-icon">📝</span>
+                    <span>Surah</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="namaz" onclick="switchTab('namaz')">
+                    <span class="nav-icon">🕌</span>
+                    <span>Namaz</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="stats" onclick="switchTab('stats')">
+                    <span class="nav-icon">📊</span>
+                    <span>Stats</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="admin" id="bottomNavAdminBtn" style="display:none"
+                    onclick="switchTab('admin')">
+                    <span class="nav-icon">👑</span>
+                    <span>Admin</span>
+                </button>
+            </nav>
 
-        <!-- LOADING OVERLAY -->
-        <div class="loading-overlay hidden" id="loadingOverlay">
-            <div class="spinner"></div>
-            <p>Loading...</p>
-        </div>
+            <div class="version-tag">v3.RC1</div>
 
-    </div><!-- dashboardWrapper -->
-
-    <!-- BOTTOM NAV (Mobile only, hidden by CSS on desktop) -->
-    <nav class="bottom-nav" id="bottomNav">
-        <button class="bottom-nav-item active" data-tab="taraweeh" onclick="switchTab('taraweeh')">
-            <span class="nav-icon">🕌</span>
-            <span>Taraweeh</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="quran" onclick="switchTab('quran')">
-            <span class="nav-icon">📖</span>
-            <span>Quran</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="fasting" onclick="switchTab('fasting')">
-            <span class="nav-icon">🍽️</span>
-            <span>Fasting</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="azkar" onclick="switchTab('azkar')">
-            <span class="nav-icon">📿</span>
-            <span>Azkar</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="surah" onclick="switchTab('surah')">
-            <span class="nav-icon">📝</span>
-            <span>Surah</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="namaz" onclick="switchTab('namaz')">
-            <span class="nav-icon">🕌</span>
-            <span>Namaz</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="stats" onclick="switchTab('stats')">
-            <span class="nav-icon">📊</span>
-            <span>Stats</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="admin" id="bottomNavAdminBtn" style="display:none"
-            onclick="switchTab('admin')">
-            <span class="nav-icon">👑</span>
-            <span>Admin</span>
-        </button>
-    </nav>
-
-    <div class="version-tag">v3.RC1</div>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/app.js"></script>
-    <script src="/admin.js"></script>
-    <script src="/analytics-client.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <script src="/app.js"></script>
+            <script src="/admin.js"></script>
+            <script src="/analytics-client.js"></script>
 </body>
 
 </html>
