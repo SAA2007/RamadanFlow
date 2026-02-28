@@ -1137,6 +1137,9 @@ body.scroll-locked {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .admin-tool-card {
@@ -1144,12 +1147,28 @@ body.scroll-locked {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 16px;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .admin-tool-card h4 {
     margin: 0 0 10px;
     font-size: 14px;
     color: var(--gold);
+}
+
+.admin-tool-card input,
+.admin-tool-card textarea,
+.admin-tool-card select,
+.admin-tool-card button {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-tool-card textarea {
+    resize: vertical;
 }
 
 /* ---------------------------------------------------------------
