@@ -474,7 +474,7 @@ function renderTaraweehCalendar() {
             if (APP.regionStarts.pak === ds) regionText += '<div class="region-start-dot pak-badge">🇵🇰 PAK</div>';
             if (APP.regionStarts.az === ds) regionText += '<div class="region-start-dot az-badge">🇦🇿 AZ</div>';
         }
-        var rb = (entry && entry.completed && entry.rakaat) ? '<span class="rakaat-badge">' + entry.rakaat + 'r</span>' : '';
+        var rb = (entry && entry.completed) ? '<span class="rakaat-badge">' + (entry.rakaat > 0 ? entry.rakaat + 'r' : '0') + '</span>' : '';
         // Only allow clicking if NOT in future AND within Ramadan timeframe
         var oc = (isFuture || !isRamadan) ? '' : ' onclick="openTaraweehModal(this, \'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><div class="calendar-dots">' + regionText + '</div>' + rb + '</div>';
@@ -493,8 +493,8 @@ function openTaraweehModal(el, dateStr) {
     var displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     var html = '<div class="smart-popup-content" data-date="' + dateStr + '">' +
         '<h3 style="margin:0 0 8px;color:var(--gold)">' + displayDate + '</h3>' +
-        '<label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Raka\'at (2-20, even):</label>' +
-        '<input type="number" id="rakaatInput" min="2" max="20" step="2" value="' + rakaat + '" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:Inter,sans-serif;font-size:16px;margin-bottom:12px">' +
+        '<label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:4px">Raka\'at (0 = missed, 2-20 even):</label>' +
+        '<input type="number" id="rakaatInput" min="0" max="20" step="2" value="' + rakaat + '" style="width:100%;padding:10px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:Inter,sans-serif;font-size:16px;margin-bottom:12px">' +
         '<div style="display:flex;gap:8px">' +
         '<button class="btn btn-primary" onclick="saveTaraweeh()" style="flex:1">Save \u2714</button>' +
         '<button class="btn btn-secondary" id="taraweehRemoveBtn" style="' + showRemove + '" onclick="removeTaraweeh()">Remove</button>' +
@@ -509,8 +509,9 @@ async function saveTaraweeh() {
     var container = document.querySelector('.smart-popup-content[data-date]') || document.querySelector('.bottom-sheet .smart-popup-content[data-date]');
     if (!container) { var modal = document.getElementById('taraweehModal'); container = modal; }
     var ds = container.getAttribute('data-date');
-    var rakaat = Math.min(20, Math.max(2, parseInt(document.getElementById('rakaatInput').value) || 8));
-    if (rakaat % 2 !== 0) rakaat -= 1;
+    var rawVal = parseInt(document.getElementById('rakaatInput').value);
+    var rakaat = isNaN(rawVal) ? 8 : Math.min(20, Math.max(0, rawVal));
+    if (rakaat > 0 && rakaat % 2 !== 0) rakaat -= 1;
     closeSmartPopup(); showLoading('Saving...');
     var r = await api('/taraweeh/log', { method: 'POST', body: { date: ds, completed: true, rakaat: rakaat } });
     hideLoading();
@@ -865,12 +866,22 @@ function openSmartPopup(triggerEl, contentHtml, opts) {
                 var spaceBelow = window.innerHeight - rect.bottom;
                 var spaceRight = vw - rect.left;
 
-                // Vertical: below or above
+                // Vertical: below or above, check bottom overflow
+                var topPos;
                 if (spaceBelow >= popH + 16) {
-                    popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+                    topPos = rect.bottom + window.scrollY + 4;
                 } else {
-                    popup.style.top = (rect.top + window.scrollY - popH - 4) + 'px';
+                    topPos = rect.top + window.scrollY - popH - 4;
                 }
+                // Final check: if popup goes below viewport bottom, flip above
+                if (topPos + popH > window.scrollY + window.innerHeight) {
+                    topPos = rect.top + window.scrollY - popH - 8;
+                }
+                // Ensure doesn't go above viewport top
+                if (topPos < window.scrollY + 8) {
+                    topPos = window.scrollY + 8;
+                }
+                popup.style.top = topPos + 'px';
 
                 // Horizontal: left or right-anchored
                 if (spaceRight >= popW) {

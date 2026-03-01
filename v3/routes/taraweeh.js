@@ -21,9 +21,9 @@ router.post('/log', (req, res) => {
         // Upsert
         const existing = db.prepare('SELECT id FROM taraweeh WHERE username = ? AND date = ?').get(username, dateStr);
         if (existing) {
-            db.prepare('UPDATE taraweeh SET completed = ?, rakaat = ? WHERE id = ?').run('YES', rakaat || 8, existing.id);
+            db.prepare('UPDATE taraweeh SET completed = ?, rakaat = ? WHERE id = ?').run('YES', rakaat != null ? rakaat : 8, existing.id);
         } else {
-            db.prepare('INSERT INTO taraweeh (username, year, date, completed, rakaat) VALUES (?, ?, ?, ?, ?)').run(username, year, dateStr, 'YES', rakaat || 8);
+            db.prepare('INSERT INTO taraweeh (username, year, date, completed, rakaat) VALUES (?, ?, ?, ?, ?)').run(username, year, dateStr, 'YES', rakaat != null ? rakaat : 8);
         }
         res.json({ success: true, message: 'Taraweeh logged for ' + dateStr });
     } catch (err) {
@@ -41,7 +41,7 @@ router.get('/:username/:year', (req, res) => {
 
         const data = {};
         rows.forEach(r => {
-            data[r.date] = { completed: r.completed === 'YES', rakaat: String(r.rakaat || 8) };
+            data[r.date] = { completed: r.completed === 'YES', rakaat: String(r.rakaat != null ? r.rakaat : 8) };
         });
 
         res.json({ success: true, data });

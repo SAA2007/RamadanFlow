@@ -198,7 +198,11 @@ router.get('/all-regions/:year', async (req, res) => {
             }
 
             if (start) {
-                results[id] = { name: r.name, start, source };
+                // Calculate end date: start + 29 = 30 days total (default to 30 if unknown)
+                var startObj = new Date(start + 'T00:00:00Z');
+                startObj.setUTCDate(startObj.getUTCDate() + 29);
+                var end = startObj.toISOString().slice(0, 10);
+                results[id] = { name: r.name, start, end, source };
             }
         });
 

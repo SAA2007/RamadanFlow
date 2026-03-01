@@ -58,10 +58,10 @@ router.get('/:year', (req, res) => {
             const namazCount = namazRows.length;
 
             // Demographics Multipliers
-            let nMosqueMult = 2;
-            let nHomeMult = 1;
+            let nMosqueMult = 1;
+            let nHomeMult = 0.5;
             if (u.gender === 'Female') {
-                nHomeMult = 2;
+                nHomeMult = 1;
             }
 
             let ageBonus = 0;
