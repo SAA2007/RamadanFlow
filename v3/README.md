@@ -1,20 +1,22 @@
-# 🕌 RamadanFlow v3.1.0
+# 🕌 RamadanFlow v3.1.1
 
 Family Ramadan progress tracker — self-hosted on Raspberry Pi. Track Taraweeh, Quran, Fasting, Azkar, Surah memorization, and daily Namaz for your entire family.
 
 ## Features
 
-- **Taraweeh** — Log nightly rakaat (2–20), calendar view, streak tracking
+- **Taraweeh** — Log nightly rakaat (0–20), calendar view, streak tracking
 - **Quran** — Khatam manager with 30-para completion grid
 - **Fasting** — Daily fast tracking with calendar
 - **Azkar** — Morning and evening dhikr calendar
 - **Surah Memorization** — Track ayah-by-ayah progress per surah
 - **Namaz** — Daily 5-prayer log (mosque/home/missed)
-- **Family Leaderboard** — Scoring formula with age/gender bonuses
+- **Family Leaderboard** — Dynamic scoring formula with configurable multipliers
 - **Badges** — Achievement system (streaks, khatams, fasting, etc.)
 - **Responsive** — Desktop sidebar + mobile bottom nav, no horizontal scroll
 - **Multi-Region Ramadan** — KSA, Pakistan, Azerbaijan start date support
 - **Smart Popups** — Viewport-aware positioning, mobile bottom sheets
+- **Tab Persistence** — Stay on current tab after page refresh
+- **Dynamic Scoring Config** — Admin-configurable point values (10 parameters)
 
 ### Admin Powers
 

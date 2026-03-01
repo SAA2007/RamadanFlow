@@ -1,6 +1,6 @@
 #!/bin/bash
 # ===================================================================
-# RamadanFlow v3.1.0 — Automated Deployment Script
+# RamadanFlow v3.1.1 — Automated Deployment Script
 # Targets: Raspberry Pi / CasaOS / Any Debian-based Linux
 # Usage:   chmod +x deploy.sh && ./deploy.sh
 #          chmod +x deploy.sh && ./deploy.sh --fresh   (wipes DB)
@@ -24,7 +24,7 @@ if [ "$1" = "--fresh" ]; then
 fi
 
 echo ""
-echo -e "${GOLD}🕌 RamadanFlow v3.1.0 — Deployment Script${NC}"
+echo -e "${GOLD}🕌 RamadanFlow v3.1.1 — Deployment Script${NC}"
 echo "─────────────────────────────────────────"
 if [ "$FRESH" = "1" ]; then
     echo -e "${RED}   ⚠️  FRESH MODE — database will be wiped!${NC}"
@@ -184,7 +184,7 @@ echo ""
 # 10. Done
 # -------------------------------------------------------------------
 echo "─────────────────────────────────────────"
-echo -e "${GREEN}🕌 RamadanFlow v3.1.0 is deployed!${NC}"
+echo -e "${GREEN}🕌 RamadanFlow v3.1.1 is deployed!${NC}"
 echo ""
 echo "   Status:  pm2 status"
 echo "   Logs:    pm2 logs ramadanflow"
