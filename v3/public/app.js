@@ -851,22 +851,34 @@ function openSmartPopup(triggerEl, contentHtml, opts) {
             var rect = triggerEl.getBoundingClientRect();
             var popH = popup.offsetHeight;
             var popW = popup.offsetWidth;
-            var spaceBelow = window.innerHeight - rect.bottom;
-            var spaceRight = window.innerWidth - rect.left;
+            var vw = window.innerWidth;
 
-            // Vertical: below or above
-            if (spaceBelow >= popH + 16) {
-                popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+            // Wide popup: center on viewport
+            if (popW > vw * 0.8) {
+                popup.style.position = 'fixed';
+                popup.style.left = '50%';
+                popup.style.top = '40%';
+                popup.style.transform = 'translateX(-50%) translateY(-50%)';
+                popup.style.maxHeight = '80vh';
+                popup.style.overflowY = 'auto';
             } else {
-                popup.style.top = (rect.top + window.scrollY - popH - 4) + 'px';
-            }
+                var spaceBelow = window.innerHeight - rect.bottom;
+                var spaceRight = vw - rect.left;
 
-            // Horizontal: left or right-anchored
-            if (spaceRight >= popW) {
-                popup.style.left = rect.left + 'px';
-            } else {
-                popup.style.right = '16px';
-                popup.style.left = 'auto';
+                // Vertical: below or above
+                if (spaceBelow >= popH + 16) {
+                    popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+                } else {
+                    popup.style.top = (rect.top + window.scrollY - popH - 4) + 'px';
+                }
+
+                // Horizontal: left or right-anchored
+                if (spaceRight >= popW) {
+                    popup.style.left = rect.left + 'px';
+                } else {
+                    popup.style.right = '16px';
+                    popup.style.left = 'auto';
+                }
             }
         } catch (e) {
             // Fallback: centered
