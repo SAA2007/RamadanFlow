@@ -823,6 +823,9 @@ function _popupKeyHandler(e) {
 }
 
 function openSmartPopup(triggerEl, contentHtml, opts) {
+    // Capture trigger position BEFORE closing existing popup (closeSmartPopup removes scroll-lock causing layout shift)
+    var savedRect = triggerEl ? triggerEl.getBoundingClientRect() : null;
+    var savedScrollY = window.scrollY;
     closeSmartPopup();
     opts = opts || {};
     var isMobile = window.innerWidth < 768;
@@ -849,7 +852,8 @@ function openSmartPopup(triggerEl, contentHtml, opts) {
         document.body.appendChild(popup);
 
         try {
-            var rect = triggerEl.getBoundingClientRect();
+            var rect = savedRect || triggerEl.getBoundingClientRect();
+            var scrollY = savedScrollY;
             var popH = popup.offsetHeight;
             var popW = popup.offsetWidth;
             var vw = window.innerWidth;
@@ -869,17 +873,17 @@ function openSmartPopup(triggerEl, contentHtml, opts) {
                 // Vertical: below or above, check bottom overflow
                 var topPos;
                 if (spaceBelow >= popH + 16) {
-                    topPos = rect.bottom + window.scrollY + 4;
+                    topPos = rect.bottom + scrollY + 4;
                 } else {
-                    topPos = rect.top + window.scrollY - popH - 4;
+                    topPos = rect.top + scrollY - popH - 4;
                 }
                 // Final check: if popup goes below viewport bottom, flip above
-                if (topPos + popH > window.scrollY + window.innerHeight) {
-                    topPos = rect.top + window.scrollY - popH - 8;
+                if (topPos + popH > scrollY + window.innerHeight) {
+                    topPos = rect.top + scrollY - popH - 8;
                 }
                 // Ensure doesn't go above viewport top
-                if (topPos < window.scrollY + 8) {
-                    topPos = window.scrollY + 8;
+                if (topPos < scrollY + 8) {
+                    topPos = scrollY + 8;
                 }
                 popup.style.top = topPos + 'px';
 
