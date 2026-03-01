@@ -71,9 +71,10 @@ router.get('/:year', (req, res) => {
             const nHomeMult = u.gender === 'Female' ? (cfg.namaz_home_women || 4) : (cfg.namaz_home_men || 2);
 
             let ageBonus = 0;
-            if (u.age) {
-                if (u.age <= 12) ageBonus = 50;
-                else if (u.age >= 60) ageBonus = 50;
+            const computedAge = u.dob ? (new Date().getFullYear() - new Date(u.dob).getFullYear()) : u.age;
+            if (computedAge) {
+                if (computedAge <= 12) ageBonus = 50;
+                else if (computedAge >= 60) ageBonus = 50;
             }
 
             // Score (dynamic formula — reads from scoring_config table)

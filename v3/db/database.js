@@ -118,6 +118,9 @@ try { db.exec("ALTER TABLE users ADD COLUMN score_multiplier REAL DEFAULT 1.0");
 try { db.exec("ALTER TABLE users ADD COLUMN session_invalidated_at TEXT"); } catch (e) { }
 try { db.exec("ALTER TABLE users ADD COLUMN frozen INTEGER DEFAULT 0"); } catch (e) { }
 
+// v3.1.2 migration — Date of Birth
+try { db.exec("ALTER TABLE users ADD COLUMN dob TEXT"); } catch (e) { }
+
 // Ramadan admin dates table
 db.exec(`
   CREATE TABLE IF NOT EXISTS ramadan_dates (

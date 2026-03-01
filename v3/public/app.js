@@ -107,14 +107,16 @@ async function handleLogin(e) {
         APP.username = result.username;
         APP.role = result.role;
         APP.email = result.email;
-        APP.gender = result.gender; // Added
-        APP.age = result.age;       // Added
+        APP.gender = result.gender;
+        APP.age = result.age;
+        APP.dob = result.dob || '';
         localStorage.setItem('rf_token', result.token);
         localStorage.setItem('rf_username', result.username);
         localStorage.setItem('rf_role', result.role);
         localStorage.setItem('rf_email', result.email);
-        localStorage.setItem('rf_gender', result.gender); // Added
-        localStorage.setItem('rf_age', result.age);       // Added
+        localStorage.setItem('rf_gender', result.gender);
+        localStorage.setItem('rf_age', result.age);
+        localStorage.setItem('rf_dob', result.dob || '');
         initDashboard();
     } else {
         showLoginAlert(result.error, 'error');
@@ -140,8 +142,8 @@ async function handleRegister(e) {
     var password = document.getElementById('regPassword').value;
     var confirm = document.getElementById('regConfirmPassword').value;
     var gender = document.getElementById('regGender').value;
-    var age = document.getElementById('regAge').value;
-    var btn = document.getElementById('registerBtn'); // Moved btn declaration here
+    var dob = document.getElementById('regDob').value;
+    var btn = document.getElementById('registerBtn');
 
     if (password !== confirm) { showRegisterAlert('Passwords do not match.', 'error'); return; }
     if (password.length < 4) { showRegisterAlert('Password must be at least 4 characters.', 'error'); return; }
@@ -149,7 +151,7 @@ async function handleRegister(e) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Creating account...';
 
-    var result = await api('/auth/register', { method: 'POST', body: { username: username, email: email, password: password, gender: gender, age: age } });
+    var result = await api('/auth/register', { method: 'POST', body: { username: username, email: email, password: password, gender: gender, dob: dob } });
     if (result.success) {
         showRegisterAlert(result.message, 'success');
         btn.disabled = false;
@@ -179,6 +181,7 @@ function initApp() {
     APP.email = localStorage.getItem('rf_email') || '';
     APP.gender = localStorage.getItem('rf_gender') || '';
     APP.age = localStorage.getItem('rf_age') || '';
+    APP.dob = localStorage.getItem('rf_dob') || '';
 
     if (!APP.username || !APP.token) {
         goToPage('Login');
@@ -247,6 +250,7 @@ function logout() {
     localStorage.removeItem('rf_email');
     localStorage.removeItem('rf_gender');
     localStorage.removeItem('rf_age');
+    localStorage.removeItem('rf_dob');
     // Also clear any legacy keys
     localStorage.removeItem('token');
     localStorage.removeItem('username');
@@ -830,12 +834,72 @@ function renderBadges() {
 
 function openProfile() {
     document.getElementById('profileModal').classList.remove('hidden');
-    document.getElementById('profileUsername').textContent = APP.username;
-    document.getElementById('profileEmail').textContent = APP.email;
-    document.getElementById('profileRole').textContent = APP.role;
+    document.getElementById('profileDisplayName').value = APP.username || '';
+    document.getElementById('profileEmailInput').value = APP.email || '';
+    document.getElementById('profileDob').value = APP.dob || '';
+    document.getElementById('profileGender').value = APP.gender || 'Male';
+    document.getElementById('profileRole').textContent = APP.role || 'user';
+    // Show dob banner if user has no dob set
+    var banner = document.getElementById('profileDobBanner');
+    if (banner) banner.style.display = APP.dob ? 'none' : 'block';
+    // Clear message
+    var msg = document.getElementById('profileMessage');
+    if (msg) msg.style.display = 'none';
 }
 
-function closeProfile() { document.getElementById('profileModal').classList.add('hidden'); }
+function closeProfile() {
+    document.getElementById('profileModal').classList.add('hidden');
+}
+
+function showProfileMessage(text, type) {
+    var msg = document.getElementById('profileMessage');
+    if (!msg) return;
+    msg.textContent = text;
+    msg.style.display = 'block';
+    msg.style.background = type === 'success' ? 'var(--accent)' : '#dc3545';
+    msg.style.color = '#fff';
+    setTimeout(function() { msg.style.display = 'none'; }, 4000);
+}
+
+async function saveProfile() {
+    var displayName = document.getElementById('profileDisplayName').value.trim();
+    var email = document.getElementById('profileEmailInput').value.trim();
+    var dob = document.getElementById('profileDob').value;
+    var gender = document.getElementById('profileGender').value;
+
+    if (!displayName || !email) {
+        showProfileMessage('Name and email are required.', 'error');
+        return;
+    }
+
+    var r = await api('/auth/profile', { method: 'PUT', body: { displayName: displayName, email: email, dob: dob, gender: gender } });
+    if (r.success) {
+        showProfileMessage(r.message || 'Profile updated!', 'success');
+        // Update local state
+        if (r.user) {
+            APP.username = r.user.username;
+            APP.email = r.user.email;
+            APP.gender = r.user.gender;
+            APP.age = r.user.age;
+            APP.dob = r.user.dob || '';
+            localStorage.setItem('rf_username', r.user.username);
+            localStorage.setItem('rf_email', r.user.email);
+            localStorage.setItem('rf_gender', r.user.gender);
+            localStorage.setItem('rf_age', r.user.age);
+            localStorage.setItem('rf_dob', r.user.dob || '');
+            // Update sidebar and header
+            var sn = document.getElementById('sidebarName');
+            if (sn) sn.textContent = r.user.username;
+            var dn = document.getElementById('displayName');
+            if (dn) dn.textContent = r.user.username;
+            // Hide dob banner
+            var banner = document.getElementById('profileDobBanner');
+            if (banner && r.user.dob) banner.style.display = 'none';
+        }
+    } else {
+        showProfileMessage(r.error || 'Save failed', 'error');
+    }
+}
 
 async function changePasswordSubmit() {
     var oldPw = document.getElementById('oldPassword').value;

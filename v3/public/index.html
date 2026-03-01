@@ -78,8 +78,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Age</label>
-                        <input type="number" id="regAge" placeholder="Your age (e.g. 30)" required min="5" max="120">
+                        <label>Date of Birth</label>
+                        <input type="date" id="regDob" required max="2025-01-01" min="1900-01-01">
                     </div>
                     <div class="form-group">
                         <label>Password</label>
@@ -716,21 +716,42 @@
 
                 <!-- PROFILE MODAL -->
                 <div class="modal-overlay hidden" id="profileModal">
-                    <div class="modal">
+                    <div class="modal" style="max-width:440px;max-height:85vh;overflow-y:auto">
                         <h3>👤 My Profile</h3>
-                        <div class="profile-info">
-                            <span class="label">Username</span><span class="value" id="profileUsername"></span>
-                            <span class="label">Email</span><span class="value" id="profileEmail"></span>
-                            <span class="label">Role</span><span class="value" id="profileRole"></span>
+                        <div id="profileDobBanner" class="alert alert-warning" style="display:none;margin-bottom:12px;font-size:13px">⚠️ Set your date of birth so your age bonus stays accurate each Ramadan</div>
+                        <div id="profileMessage" style="display:none;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px"></div>
+                        <div class="form-group">
+                            <label>Display Name</label>
+                            <input type="text" id="profileDisplayName" placeholder="Your display name">
                         </div>
-                        <hr style="border-color:var(--border-color);margin:16px 0">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="profileEmailInput" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Date of Birth</label>
+                            <input type="date" id="profileDob" max="2025-01-01" min="1900-01-01">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select id="profileGender">
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:4px">
+                            <label>Role</label>
+                            <span class="value" id="profileRole" style="padding:8px 0;display:block;color:var(--text-secondary)"></span>
+                        </div>
+                        <div class="modal-actions" style="margin-bottom:16px">
+                            <button class="btn btn-secondary" onclick="closeProfile()">Close</button>
+                            <button class="btn btn-primary" onclick="saveProfile()">💾 Save Profile</button>
+                        </div>
+                        <hr style="border-color:var(--border-color);margin:12px 0">
                         <h3 style="font-size:15px">🔑 Change Password</h3>
-                        <div class="form-group"><label>Current Password</label><input type="password" id="oldPassword"
-                                placeholder="Enter current password"></div>
-                        <div class="form-group"><label>New Password</label><input type="password" id="newPassword"
-                                placeholder="Min 4 characters"></div>
-                        <div class="form-group"><label>Confirm New Password</label><input type="password"
-                                id="confirmNewPassword" placeholder="Re-enter new password"></div>
+                        <div class="form-group"><label>Current Password</label><input type="password" id="oldPassword" placeholder="Enter current password"></div>
+                        <div class="form-group"><label>New Password</label><input type="password" id="newPassword" placeholder="Min 4 characters"></div>
+                        <div class="form-group"><label>Confirm New Password</label><input type="password" id="confirmNewPassword" placeholder="Re-enter new password"></div>
                         <div class="modal-actions">
                             <button class="btn btn-secondary" onclick="closeProfile()">Close</button>
                             <button class="btn btn-primary" onclick="changePasswordSubmit()">Update Password</button>
@@ -799,7 +820,7 @@
                 </button>
             </nav>
 
-            <div class="version-tag">v3.1.1</div>
+            <div class="version-tag">v3.1.2</div>
 
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <script src="/app.js"></script>

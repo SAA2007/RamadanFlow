@@ -8,7 +8,7 @@ const router = express.Router();
 // GET /api/admin/users — returns all users with metadata + score
 router.get('/users', (req, res) => {
     try {
-        const users = db.prepare('SELECT username, email, role, gender, age, score_multiplier, frozen, session_invalidated_at, created_at as created FROM users ORDER BY created_at').all();
+        const users = db.prepare('SELECT username, email, role, gender, age, dob, score_multiplier, frozen, session_invalidated_at, created_at as created FROM users ORDER BY created_at').all();
         const year = new Date().getFullYear();
         users.forEach(u => {
             let entries = 0;
@@ -171,7 +171,9 @@ router.get('/user-data/:username/:year', (req, res) => {
         const khatams = db.prepare('SELECT id, type, para_count, started_at, completed_at FROM khatams WHERE username = ? AND year = ?').all(username, y);
         const surah = db.prepare('SELECT id, surah_number, surah_name, total_ayah, memorized_ayah, completed_at FROM surah_memorization WHERE username = ?').all(username);
 
-        res.json({ success: true, data: { taraweeh, fasting, azkar, namaz, khatams, surah } });
+        const userRow = db.prepare('SELECT username, email, gender, age, dob FROM users WHERE username = ?').get(username);
+
+        res.json({ success: true, data: { taraweeh, fasting, azkar, namaz, khatams, surah }, userInfo: userRow || {} });
     } catch (err) {
         console.error('Admin get user data error:', err);
         res.json({ success: false, error: 'Failed to load user data.' });
@@ -194,6 +196,13 @@ router.post('/user-data/save', (req, res) => {
             namaz: ['location'],
             surah_memorization: ['memorized_ayah']
         };
+
+        // Handle profile dob update if present
+        if (req.body.dob !== undefined) {
+            const dobVal = req.body.dob || null;
+            const ageVal = dobVal ? (new Date().getFullYear() - new Date(dobVal).getFullYear()) : null;
+            db.prepare('UPDATE users SET dob = ?, age = COALESCE(?, age) WHERE username = ?').run(dobVal, ageVal, username);
+        }
 
         let applied = 0;
         const auditEntries = [];

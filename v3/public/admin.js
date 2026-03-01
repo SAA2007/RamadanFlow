@@ -661,6 +661,13 @@ function openDataEditor(username) {
         APP.editingUsername = username;
         var userData = data.data || {};
         var html = '';
+        // Profile section with DOB
+        var userInfo = data.userInfo || {};
+        html += '<h4 style="color:var(--gold);margin:12px 0 6px">Profile</h4>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+        html += '<div class="form-group" style="margin:0"><label style="font-size:11px">Date of Birth</label><input type="date" id="adminEditDob" value="' + (userInfo.dob || '') + '" style="width:100%;padding:4px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:3px;color:var(--text-primary);font-size:11px"></div>';
+        html += '<div class="form-group" style="margin:0"><label style="font-size:11px">Age (computed)</label><input type="text" value="' + (userInfo.age || '') + '" disabled style="width:100%;padding:4px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:3px;color:var(--text-secondary);font-size:11px"></div>';
+        html += '</div>';
         var tableMap = [
             { key: 'taraweeh', dbTable: 'taraweeh', label: 'Taraweeh' },
             { key: 'fasting', dbTable: 'fasting', label: 'Fasting' },
@@ -702,9 +709,14 @@ async function saveDataEditor() {
         if (!inp.dataset.id) return;
         changes.push({ type: inp.dataset.table, id: parseInt(inp.dataset.id), field: inp.dataset.key, value: inp.value });
     });
-    if (changes.length === 0) { showToast('No changes detected', 'error'); return; }
+    // Collect DOB from profile section
+    var dobInput = document.getElementById('adminEditDob');
+    var dobValue = dobInput ? dobInput.value : undefined;
+    if (changes.length === 0 && dobValue === undefined) { showToast('No changes detected', 'error'); return; }
     try {
-        var data = await api('/admin/user-data/save', { method: 'POST', body: { username: APP.editingUsername, changes: changes } });
+        var body = { username: APP.editingUsername, changes: changes };
+        if (dobValue !== undefined) body.dob = dobValue;
+        var data = await api('/admin/user-data/save', { method: 'POST', body: body });
         if (data.success) { showToast('\u2705 ' + data.message, 'success'); closeDataEditor(); }
         else showToast(data.error || 'Save failed', 'error');
     } catch (e) { showToast('Request failed', 'error'); }
