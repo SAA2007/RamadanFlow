@@ -788,7 +788,7 @@ async function saveScoringConfig() {
     inputs.forEach(function (inp) {
         configs.push({ key: inp.getAttribute('data-scoring-key'), value: parseFloat(inp.value) });
     });
-    var data = await api('/admin/scoring-config', 'POST', { configs: configs });
+    var data = await api('/admin/scoring-config', { method: 'POST', body: { configs: configs } });
     if (data.success) {
         showToast('Scoring config saved!', 'success');
     } else {
@@ -799,7 +799,7 @@ async function saveScoringConfig() {
 async function resetScoringConfig() {
     if (!confirm('Reset ALL scoring values to defaults?')) return;
     if (!confirm('Are you sure? This cannot be undone.')) return;
-    var data = await api('/admin/scoring-config/reset', 'POST', {});
+    var data = await api('/admin/scoring-config/reset', { method: 'POST', body: {} });
     if (data.success) {
         showToast('Scoring config reset to defaults!', 'success');
         loadScoringConfig();

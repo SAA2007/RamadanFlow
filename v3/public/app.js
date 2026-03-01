@@ -948,6 +948,12 @@ function openSmartPopup(triggerEl, contentHtml, opts) {
                 if (topPos < scrollY + 8) {
                     topPos = scrollY + 8;
                 }
+                // Enforce max-height so popup doesn't overflow viewport
+                var maxH = window.innerHeight - (topPos - scrollY) - 16;
+                if (maxH < popH) {
+                    popup.style.maxHeight = maxH + 'px';
+                    popup.style.overflowY = 'auto';
+                }
                 popup.style.top = topPos + 'px';
 
                 // Horizontal: left or right-anchored
