@@ -267,8 +267,8 @@ function logout() {
 // ===================================================================
 
 function switchTab(tab) {
-    // Save last tab for persistence across refresh
-    try { localStorage.setItem('rf_last_tab', tab); } catch (e) { }
+    // Save last tab for persistence across refreshes
+    localStorage.setItem('rf_last_tab', tab);
 
     // Sync active state across all three nav systems
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -406,9 +406,8 @@ async function loadDashboard() {
             APP.fastingCalMonth = rm.month;
             APP.fastingCalYear = rm.year;
         }
-        // Restore last tab, or default to taraweeh
-        var savedTab = 'taraweeh';
-        try { savedTab = localStorage.getItem('rf_last_tab') || 'taraweeh'; } catch (e) { }
+        // Restore last tab from localStorage, or default to taraweeh
+        var savedTab = localStorage.getItem('rf_last_tab') || 'taraweeh';
         if (savedTab === 'admin' && APP.role !== 'admin') savedTab = 'taraweeh';
         switchTab(savedTab);
     }
@@ -667,42 +666,58 @@ function loadStats() {
 
 async function loadScoringExplainer() {
     try {
-        var resp = await fetch('/api/admin/scoring-config');
-        var data = await resp.json();
+        var res = await fetch('/api/scoring-config');
+        var data = await res.json();
         if (!data.success || !data.configs) return;
-        var sc = {};
-        data.configs.forEach(function (c) { sc[c.key] = c.value; });
+        var cfg = {};
+        data.configs.forEach(function (c) { cfg[c.key] = c.value; });
 
         // Update scoring grid values dynamically
-        var grid = document.querySelector('#scoringExplainerCard .scoring-grid');
-        if (grid) {
-            grid.innerHTML =
-                '<div class="scoring-item"><div class="scoring-emoji">🕌</div><div class="scoring-label">Taraweeh</div><div class="scoring-value">' + (sc.taraweeh_per_rakaat || 1.5) + ' pts per rakaat</div></div>' +
-                '<div class="scoring-item"><div class="scoring-emoji">📖</div><div class="scoring-label">Quran</div><div class="scoring-value">' + (sc.quran_per_para || 10) + ' pts/para · ' + (sc.quran_per_khatam || 50) + ' pts/khatam</div></div>' +
-                '<div class="scoring-item"><div class="scoring-emoji">🍽️</div><div class="scoring-label">Fasting</div><div class="scoring-value">' + (sc.fasting_per_day || 15) + ' pts per fast</div></div>' +
-                '<div class="scoring-item"><div class="scoring-emoji">📿</div><div class="scoring-label">Azkar</div><div class="scoring-value">' + (sc.azkar_per_session || 3) + ' pts per session</div></div>' +
-                '<div class="scoring-item"><div class="scoring-emoji">📝</div><div class="scoring-label">Surah</div><div class="scoring-value">' + (sc.surah_per_ayah || 0.5) + ' pts per ayah</div></div>' +
-                '<div class="scoring-item"><div class="scoring-emoji">🕌</div><div class="scoring-label">Namaz</div><div class="scoring-value">See breakdown below ↓</div></div>';
+        var grid = document.querySelector('.scoring-grid');
+        if (!grid) return;
+        var items = grid.querySelectorAll('.scoring-item');
+        var mapping = [
+            { label: 'Taraweeh', value: (cfg.taraweeh_per_rakaat || 1.5) + ' pts per rakaat' },
+            { label: 'Quran', value: (cfg.quran_per_para || 10) + ' pts/para · ' + (cfg.quran_per_khatam || 50) + ' pts/khatam' },
+            { label: 'Fasting', value: (cfg.fasting_per_day || 15) + ' pts per fast' },
+            { label: 'Azkar', value: (cfg.azkar_per_session || 3) + ' pts per session' },
+            { label: 'Surah', value: (cfg.surah_per_ayah || 0.5) + ' pts per ayah' },
+            { label: 'Namaz', value: 'Mosque ' + (cfg.namaz_mosque || 4) + ' · Home ' + (cfg.namaz_home_men || 2) + '-' + (cfg.namaz_home_women || 4) + ' pts' }
+        ];
+        items.forEach(function (item, i) {
+            if (mapping[i]) {
+                var labelEl = item.querySelector('.scoring-label');
+                var valueEl = item.querySelector('.scoring-value');
+                if (labelEl) labelEl.textContent = mapping[i].label;
+                if (valueEl) valueEl.textContent = mapping[i].value;
+            }
+        });
+
+        // Update Namaz table values
+        var tds = document.querySelectorAll('.scoring-table td');
+        if (tds.length >= 8) {
+            tds[1].textContent = (cfg.namaz_mosque || 4) + ' pt ✓';
+            tds[2].textContent = (cfg.namaz_home_men || 2) + ' pt';
+            tds[5].textContent = (cfg.namaz_mosque || 4) + ' pt ✓';
+            tds[6].textContent = (cfg.namaz_home_women || 4) + ' pt ⭐';
         }
 
-        // Update namaz table dynamically
-        var tblBody = document.querySelector('#scoringExplainerCard .scoring-table tbody');
-        if (tblBody) {
-            tblBody.innerHTML =
-                '<tr><td>👨 Men</td><td style="color:var(--gold)">' + (sc.namaz_mosque || 4) + ' pts ✓</td><td>' + (sc.namaz_home_men || 2) + ' pts</td><td style="color:var(--text-secondary)">0</td></tr>' +
-                '<tr><td>👩 Women</td><td style="color:var(--gold)">' + (sc.namaz_mosque || 4) + ' pts ✓</td><td style="color:var(--gold)">' + (sc.namaz_home_women || 4) + ' pts ⭐</td><td style="color:var(--text-secondary)">0</td></tr>';
+        // Update streak in multipliers section
+        var notes = document.querySelectorAll('.scoring-multipliers .scoring-note');
+        if (notes.length >= 1) {
+            // Insert streak info
+            var streakNote = notes[0];
+            if (streakNote && !document.getElementById('streakNote')) {
+                var sn = document.createElement('div');
+                sn.className = 'scoring-note';
+                sn.id = 'streakNote';
+                sn.innerHTML = '🔥 <strong>Streak:</strong> ' + (cfg.streak_per_day || 2) + ' pts per consecutive day of Taraweeh.';
+                streakNote.parentNode.insertBefore(sn, streakNote);
+            }
         }
-
-        // Update multipliers section
-        var mults = document.querySelector('#scoringExplainerCard .scoring-multipliers');
-        if (mults) {
-            mults.innerHTML =
-                '<h3 style="font-size:14px;color:var(--gold);margin:16px 0 8px">⚡ Multipliers & Bonuses</h3>' +
-                '<div class="scoring-note">🔥 <strong>Streak bonus:</strong> ' + (sc.streak_per_day || 2) + ' pts per consecutive day of taraweeh.</div>' +
-                '<div class="scoring-note">👶👴 <strong>Age bonus:</strong> Children (≤12) and elders (≥60) receive +50 bonus points as encouragement.</div>' +
-                '<div class="scoring-note">⚡ <strong>Score multiplier:</strong> Admins can apply a personal boost to any user — shown as ⚡ on the leaderboard.</div>';
-        }
-    } catch (e) { /* scoring explainer fetch failed — keep static values */ }
+    } catch (e) {
+        // silently fail
+    }
 }
 
 let taraweehChartInstance = null;
@@ -872,7 +887,7 @@ function _popupKeyHandler(e) {
 
 function openSmartPopup(triggerEl, contentHtml, opts) {
     closeSmartPopup();
-    // Capture trigger position AFTER closing — DOM is stable now
+    // Capture trigger position AFTER closing existing popup — stable DOM
     var savedRect = triggerEl ? triggerEl.getBoundingClientRect() : null;
     var savedScrollY = window.scrollY;
     opts = opts || {};

@@ -9,11 +9,6 @@ router.get('/:year', (req, res) => {
         const year = parseInt(req.params.year);
         const users = db.prepare('SELECT username, email, role, gender, age, score_multiplier, frozen, created_at FROM users').all();
 
-        // Load scoring config from DB
-        const configRows = db.prepare('SELECT key, value FROM scoring_config').all();
-        const sc = {};
-        configRows.forEach(r => { sc[r.key] = r.value; });
-
         const summaries = users.map(u => {
             // Taraweeh count, rakaat, & streak
             const taraweehRows = db.prepare('SELECT date, rakaat FROM taraweeh WHERE username = ? AND year = ? AND completed = ? ORDER BY date DESC').all(u.username, year, 'YES');
@@ -46,19 +41,15 @@ router.get('/:year', (req, res) => {
             // Fasting
             const fastingCount = db.prepare('SELECT COUNT(*) as c FROM fasting WHERE username = ? AND year = ? AND completed = ?').get(u.username, year, 'YES').c;
 
-            // Azkar — each morning or evening counts as 1 session
+            // Azkar — each morning or evening counts as 1 separate instance
             const azkarRows = db.prepare("SELECT morning, evening FROM azkar WHERE username = ? AND date LIKE ?").all(u.username, year + '%');
-            let azkarSessions = 0;
+            let azkarPoints = 0;
             let azkarCount = 0;
             azkarRows.forEach(r => {
-                if (r.morning === 1) azkarSessions += 1;
-                if (r.evening === 1) azkarSessions += 1;
+                if (r.morning === 1) azkarPoints += 1;
+                if (r.evening === 1) azkarPoints += 1;
                 if (r.morning === 1 || r.evening === 1) azkarCount += 1;
             });
-
-            // Surah memorization
-            const surahResult = db.prepare("SELECT COALESCE(SUM(memorized_ayah), 0) as total FROM surah_memorization WHERE username = ?").get(u.username);
-            const surahAyahs = surahResult.total;
 
             // Namaz — count prayers by location
             const namazRows = db.prepare("SELECT location FROM namaz WHERE username = ? AND date LIKE ? AND location != 'missed'").all(u.username, year + '%');
@@ -66,9 +57,18 @@ router.get('/:year', (req, res) => {
             const namazHome = namazRows.filter(r => r.location === 'home').length;
             const namazCount = namazRows.length;
 
-            // Namaz multipliers from config
-            const nMosqueMult = sc.namaz_mosque || 4;
-            const nHomeMult = (u.gender === 'Female') ? (sc.namaz_home_women || 4) : (sc.namaz_home_men || 2);
+            // Surah memorization
+            const surahResult = db.prepare("SELECT COALESCE(SUM(memorized_ayah), 0) as total FROM surah_memorization WHERE username = ?").get(u.username);
+            const surahAyahs = surahResult.total;
+
+            // Read scoring config from DB
+            const configRows = db.prepare('SELECT key, value FROM scoring_config').all();
+            const cfg = {};
+            configRows.forEach(r => { cfg[r.key] = r.value; });
+
+            // Demographics-aware namaz multipliers
+            const nMosqueMult = cfg.namaz_mosque || 4;
+            const nHomeMult = u.gender === 'Female' ? (cfg.namaz_home_women || 4) : (cfg.namaz_home_men || 2);
 
             let ageBonus = 0;
             if (u.age) {
@@ -76,17 +76,17 @@ router.get('/:year', (req, res) => {
                 else if (u.age >= 60) ageBonus = 50;
             }
 
-            // Score — all values from scoring_config
+            // Score (dynamic formula — reads from scoring_config table)
             const rawScore = Math.floor(
-                (sumRakaat * (sc.taraweeh_per_rakaat || 1.5)) +
-                (totalParas * (sc.quran_per_para || 10)) +
-                (completedKhatams * (sc.quran_per_khatam || 50)) +
-                (fastingCount * (sc.fasting_per_day || 15)) +
-                (azkarSessions * (sc.azkar_per_session || 3)) +
-                (surahAyahs * (sc.surah_per_ayah || 0.5)) +
+                (sumRakaat * (cfg.taraweeh_per_rakaat || 1.5)) +
+                (totalParas * (cfg.quran_per_para || 10)) +
+                (completedKhatams * (cfg.quran_per_khatam || 50)) +
+                (fastingCount * (cfg.fasting_per_day || 15)) +
+                (azkarPoints * (cfg.azkar_per_session || 3)) +
+                (surahAyahs * (cfg.surah_per_ayah || 0.5)) +
                 (namazMosque * nMosqueMult) +
                 (namazHome * nHomeMult) +
-                (streak * (sc.streak_per_day || 2)) +
+                (streak * (cfg.streak_per_day || 2)) +
                 ageBonus
             );
 

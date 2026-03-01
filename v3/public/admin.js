@@ -759,7 +759,7 @@ async function exportJSON() {
 // ===================================================================
 
 async function loadScoringConfig() {
-    var container = document.getElementById('scoringConfigContainer');
+    var container = document.getElementById('scoringConfigForm');
     if (!container) return;
     try {
         var data = await api('/admin/scoring-config');

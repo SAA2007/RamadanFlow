@@ -100,22 +100,22 @@ app.use('/api/namaz', authMiddleware, frozenCheck, require('./routes/namaz'));
 app.use('/api/dashboard', authMiddleware, require('./routes/dashboard'));
 app.use('/api/ramadan', authMiddleware, require('./routes/ramadan'));
 
-// Public scoring config read (for stats explainer — no auth)
-const scoringDb = require('./db/database');
-app.get('/api/admin/scoring-config', (req, res) => {
-    try {
-        const rows = scoringDb.prepare('SELECT key, value, label, description FROM scoring_config ORDER BY rowid').all();
-        res.json({ success: true, configs: rows });
-    } catch (err) {
-        res.json({ success: false, error: 'Failed to load scoring config.' });
-    }
-});
-
 // Admin routes — require JWT + admin role
 app.use('/api/admin', authMiddleware, adminMiddleware, require('./routes/admin'));
 
 // Analytics routes — mixed auth (fingerprint/events are public, admin feeds require admin)
 app.use('/api/analytics', require('./routes/analytics'));
+
+// Public scoring config endpoint (read-only, no auth — for Stats explainer)
+app.get('/api/scoring-config', function (req, res) {
+    try {
+        const db = require('./db/database');
+        const rows = db.prepare('SELECT key, value, label, description FROM scoring_config ORDER BY rowid').all();
+        res.json({ success: true, configs: rows });
+    } catch (e) {
+        res.json({ success: false, error: 'Failed to load scoring config.' });
+    }
+});
 
 // Public announcement endpoint
 const announcementDb = require('./db/database');
