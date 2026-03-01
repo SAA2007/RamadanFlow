@@ -481,17 +481,21 @@
                             </tbody>
                         </table>
                         <div class="scoring-note scoring-note-warm">
-                            ⭐ <strong>Women's home prayer:</strong> Islam grants women equal reward for praying at home. This is a mercy and honor — home prayer for women carries the same spiritual weight as the mosque.
+                            ⭐ <strong>Women's home prayer:</strong> Islam grants women equal reward for praying at home.
+                            This is a mercy and honor — home prayer for women carries the same spiritual weight as the
+                            mosque.
                         </div>
                     </div>
 
                     <div class="scoring-multipliers">
                         <h3 style="font-size:14px;color:var(--gold);margin:16px 0 8px">⚡ Multipliers & Bonuses</h3>
                         <div class="scoring-note">
-                            👶👴 <strong>Age bonus:</strong> Children (≤12) and elders (≥60) receive +50 bonus points as encouragement.
+                            👶👴 <strong>Age bonus:</strong> Children (≤12) and elders (≥60) receive +50 bonus points as
+                            encouragement.
                         </div>
                         <div class="scoring-note">
-                            ⚡ <strong>Score multiplier:</strong> Admins can apply a personal boost to any user — shown as ⚡ on the leaderboard.
+                            ⚡ <strong>Score multiplier:</strong> Admins can apply a personal boost to any user — shown
+                            as ⚡ on the leaderboard.
                         </div>
                     </div>
                 </div>
@@ -637,6 +641,22 @@
                                 style="font-size:11px;color:var(--text-muted)">(auto-refreshes 10s)</span></h4>
                         <div class="table-scroll-wrap">
                             <div id="liveRequestLog">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: Scoring Config -->
+                <div class="admin-section collapsed" id="adminSec-scoring">
+                    <div class="admin-section-header" onclick="toggleAdminSection('scoring')">
+                        <h3>⚖️ Scoring Config</h3>
+                        <span class="admin-section-chevron">▼</span>
+                    </div>
+                    <div class="admin-section-body">
+                        <div id="scoringConfigContainer" style="margin-bottom:12px">Loading...</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <button class="btn btn-primary btn-sm" onclick="saveScoringConfig()">💾 Save All</button>
+                            <button class="btn btn-secondary btn-sm" onclick="resetScoringConfig()">🔄 Reset to
+                                Defaults</button>
                         </div>
                     </div>
                 </div>

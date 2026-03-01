@@ -260,4 +260,38 @@ try {
   `);
 } catch (e) { /* trigger may already exist */ }
 
+// ===================================================================
+// SCORING CONFIG TABLE
+// ===================================================================
+db.exec(`
+  CREATE TABLE IF NOT EXISTS scoring_config (
+    key TEXT PRIMARY KEY,
+    value REAL NOT NULL,
+    label TEXT,
+    description TEXT
+  );
+`);
+
+// Seed defaults if empty
+const scoringCount = db.prepare('SELECT COUNT(*) as c FROM scoring_config').get().c;
+if (scoringCount === 0) {
+  const seedStmt = db.prepare('INSERT INTO scoring_config (key, value, label, description) VALUES (?, ?, ?, ?)');
+  const defaults = [
+    ['taraweeh_per_rakaat', 1.5, 'Taraweeh per Rakaat', 'Points per rakaat of taraweeh prayer'],
+    ['quran_per_para', 10, 'Quran per Para', 'Points per para read'],
+    ['quran_per_khatam', 50, 'Quran per Khatam', 'Bonus points for completing a full Quran'],
+    ['fasting_per_day', 15, 'Fasting per Day', 'Points per day of fasting'],
+    ['azkar_per_session', 3, 'Azkar per Session', 'Points per morning or evening adhkar session'],
+    ['surah_per_ayah', 0.5, 'Surah per Ayah', 'Points per ayah memorized'],
+    ['namaz_mosque', 4, 'Namaz (Mosque)', 'Points per prayer at the mosque'],
+    ['namaz_home_men', 2, 'Namaz Home (Men)', 'Points per prayer at home for men'],
+    ['namaz_home_women', 4, 'Namaz Home (Women)', 'Points per prayer at home for women'],
+    ['streak_per_day', 2, 'Streak per Day', 'Points per consecutive day of taraweeh']
+  ];
+  const seedTx = db.transaction(() => {
+    defaults.forEach(d => seedStmt.run(d[0], d[1], d[2], d[3]));
+  });
+  seedTx();
+}
+
 module.exports = db;

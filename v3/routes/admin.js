@@ -337,4 +337,68 @@ router.post('/db-checkpoint', (req, res) => {
     }
 });
 
+// GET /api/admin/scoring-config — public read (for display in stats explainer)
+router.get('/scoring-config', (req, res) => {
+    try {
+        const rows = db.prepare('SELECT key, value, label, description FROM scoring_config ORDER BY rowid').all();
+        res.json({ success: true, configs: rows });
+    } catch (err) {
+        res.json({ success: false, error: 'Failed to load scoring config.' });
+    }
+});
+
+// POST /api/admin/scoring-config — admin only, update configs
+router.post('/scoring-config', (req, res) => {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, error: 'Unauthorized' });
+    try {
+        const { configs } = req.body;
+        if (!configs || !Array.isArray(configs)) return res.json({ success: false, error: 'Invalid configs array.' });
+        const updateStmt = db.prepare('UPDATE scoring_config SET value = ? WHERE key = ?');
+        const before = {};
+        const after = {};
+        db.prepare('SELECT key, value FROM scoring_config').all().forEach(r => { before[r.key] = r.value; });
+        const tx = db.transaction(() => {
+            configs.forEach(c => {
+                if (c.key && c.value !== undefined) {
+                    updateStmt.run(parseFloat(c.value), c.key);
+                    after[c.key] = parseFloat(c.value);
+                }
+            });
+        });
+        tx();
+        logAdminAction(req.user.username, 'update_scoring_config', null, JSON.stringify(before), { after });
+        res.json({ success: true, message: 'Scoring config updated.' });
+    } catch (err) {
+        console.error('Scoring config update error:', err);
+        res.json({ success: false, error: 'Failed to update scoring config.' });
+    }
+});
+
+// POST /api/admin/scoring-config/reset — admin only, reseed defaults
+router.post('/scoring-config/reset', (req, res) => {
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, error: 'Unauthorized' });
+    try {
+        db.prepare('DELETE FROM scoring_config').run();
+        const seedStmt = db.prepare('INSERT INTO scoring_config (key, value, label, description) VALUES (?, ?, ?, ?)');
+        const defaults = [
+            ['taraweeh_per_rakaat', 1.5, 'Taraweeh per Rakaat', 'Points per rakaat of taraweeh prayer'],
+            ['quran_per_para', 10, 'Quran per Para', 'Points per para read'],
+            ['quran_per_khatam', 50, 'Quran per Khatam', 'Bonus points for completing a full Quran'],
+            ['fasting_per_day', 15, 'Fasting per Day', 'Points per day of fasting'],
+            ['azkar_per_session', 3, 'Azkar per Session', 'Points per morning or evening adhkar session'],
+            ['surah_per_ayah', 0.5, 'Surah per Ayah', 'Points per ayah memorized'],
+            ['namaz_mosque', 4, 'Namaz (Mosque)', 'Points per prayer at the mosque'],
+            ['namaz_home_men', 2, 'Namaz Home (Men)', 'Points per prayer at home for men'],
+            ['namaz_home_women', 4, 'Namaz Home (Women)', 'Points per prayer at home for women'],
+            ['streak_per_day', 2, 'Streak per Day', 'Points per consecutive day of taraweeh']
+        ];
+        const tx = db.transaction(() => { defaults.forEach(d => seedStmt.run(d[0], d[1], d[2], d[3])); });
+        tx();
+        logAdminAction(req.user.username, 'reset_scoring_config', null, null, { action: 'reset_to_defaults' });
+        res.json({ success: true, message: 'Scoring config reset to defaults.' });
+    } catch (err) {
+        res.json({ success: false, error: 'Failed to reset scoring config.' });
+    }
+});
+
 module.exports = router;

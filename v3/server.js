@@ -100,6 +100,17 @@ app.use('/api/namaz', authMiddleware, frozenCheck, require('./routes/namaz'));
 app.use('/api/dashboard', authMiddleware, require('./routes/dashboard'));
 app.use('/api/ramadan', authMiddleware, require('./routes/ramadan'));
 
+// Public scoring config read (for stats explainer — no auth)
+const scoringDb = require('./db/database');
+app.get('/api/admin/scoring-config', (req, res) => {
+    try {
+        const rows = scoringDb.prepare('SELECT key, value, label, description FROM scoring_config ORDER BY rowid').all();
+        res.json({ success: true, configs: rows });
+    } catch (err) {
+        res.json({ success: false, error: 'Failed to load scoring config.' });
+    }
+});
+
 // Admin routes — require JWT + admin role
 app.use('/api/admin', authMiddleware, adminMiddleware, require('./routes/admin'));
 

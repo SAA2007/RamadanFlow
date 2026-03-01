@@ -64,6 +64,7 @@ async function loadAdmin() {
     loadAuditLog();
     loadAdminRamadanDates();
     loadCurrentAnnouncement();
+    loadScoringConfig();
 
     clearInterval(adminAnomalyPollTimer);
     adminAnomalyPollTimer = setInterval(function () { pollAnomalies(); }, 30000);
@@ -751,4 +752,58 @@ async function exportJSON() {
         a.download = 'RamadanFlow_' + APP.year + '.json';
         a.click();
     } catch (e) { showToast('Export failed', 'error'); }
+}
+
+// ===================================================================
+// SCORING CONFIG
+// ===================================================================
+
+async function loadScoringConfig() {
+    var container = document.getElementById('scoringConfigContainer');
+    if (!container) return;
+    try {
+        var data = await api('/admin/scoring-config');
+        if (!data.success || !data.configs) {
+            container.innerHTML = '<p style="color:var(--text-secondary)">Failed to load config.</p>';
+            return;
+        }
+        var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+        data.configs.forEach(function (c) {
+            html += '<div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:10px">' +
+                '<label style="display:block;font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:2px">' + (c.label || c.key) + '</label>' +
+                '<p style="font-size:11px;color:var(--text-secondary);margin:0 0 6px">' + (c.description || '') + '</p>' +
+                '<input type="number" step="any" value="' + c.value + '" data-scoring-key="' + c.key + '" style="width:100%;padding:6px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-primary);font-family:Inter,sans-serif">' +
+                '</div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = '<p style="color:var(--text-secondary)">Error loading config.</p>';
+    }
+}
+
+async function saveScoringConfig() {
+    var inputs = document.querySelectorAll('[data-scoring-key]');
+    var configs = [];
+    inputs.forEach(function (inp) {
+        configs.push({ key: inp.getAttribute('data-scoring-key'), value: parseFloat(inp.value) });
+    });
+    var data = await api('/admin/scoring-config', 'POST', { configs: configs });
+    if (data.success) {
+        showToast('Scoring config saved!', 'success');
+    } else {
+        showToast(data.error || 'Save failed', 'error');
+    }
+}
+
+async function resetScoringConfig() {
+    if (!confirm('Reset ALL scoring values to defaults?')) return;
+    if (!confirm('Are you sure? This cannot be undone.')) return;
+    var data = await api('/admin/scoring-config/reset', 'POST', {});
+    if (data.success) {
+        showToast('Scoring config reset to defaults!', 'success');
+        loadScoringConfig();
+    } else {
+        showToast(data.error || 'Reset failed', 'error');
+    }
 }

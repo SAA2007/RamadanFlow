@@ -267,6 +267,9 @@ function logout() {
 // ===================================================================
 
 function switchTab(tab) {
+    // Save last tab for persistence across refresh
+    try { localStorage.setItem('rf_last_tab', tab); } catch (e) { }
+
     // Sync active state across all three nav systems
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
     document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.remove('active'); });
@@ -403,7 +406,11 @@ async function loadDashboard() {
             APP.fastingCalMonth = rm.month;
             APP.fastingCalYear = rm.year;
         }
-        switchTab('taraweeh');
+        // Restore last tab, or default to taraweeh
+        var savedTab = 'taraweeh';
+        try { savedTab = localStorage.getItem('rf_last_tab') || 'taraweeh'; } catch (e) { }
+        if (savedTab === 'admin' && APP.role !== 'admin') savedTab = 'taraweeh';
+        switchTab(savedTab);
     }
 }
 
@@ -476,7 +483,7 @@ function renderTaraweehCalendar() {
         }
         var rb = (entry && entry.completed) ? '<span class="rakaat-badge">' + (entry.rakaat > 0 ? entry.rakaat + 'r' : '0') + '</span>' : '';
         // Only allow clicking if NOT in future AND within Ramadan timeframe
-        var oc = (isFuture || !isRamadan) ? '' : ' onclick="openTaraweehModal(this, \'' + ds + '\')"';
+        var oc = (isFuture || !isRamadan) ? '' : ' onclick="event.preventDefault();event.stopPropagation();openTaraweehModal(this, \'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><div class="calendar-dots">' + regionText + '</div>' + rb + '</div>';
     }
     container.innerHTML = html;
@@ -655,6 +662,47 @@ function loadStats() {
     renderCharts();
     renderLeaderboard();
     renderBadges();
+    loadScoringExplainer();
+}
+
+async function loadScoringExplainer() {
+    try {
+        var resp = await fetch('/api/admin/scoring-config');
+        var data = await resp.json();
+        if (!data.success || !data.configs) return;
+        var sc = {};
+        data.configs.forEach(function (c) { sc[c.key] = c.value; });
+
+        // Update scoring grid values dynamically
+        var grid = document.querySelector('#scoringExplainerCard .scoring-grid');
+        if (grid) {
+            grid.innerHTML =
+                '<div class="scoring-item"><div class="scoring-emoji">🕌</div><div class="scoring-label">Taraweeh</div><div class="scoring-value">' + (sc.taraweeh_per_rakaat || 1.5) + ' pts per rakaat</div></div>' +
+                '<div class="scoring-item"><div class="scoring-emoji">📖</div><div class="scoring-label">Quran</div><div class="scoring-value">' + (sc.quran_per_para || 10) + ' pts/para · ' + (sc.quran_per_khatam || 50) + ' pts/khatam</div></div>' +
+                '<div class="scoring-item"><div class="scoring-emoji">🍽️</div><div class="scoring-label">Fasting</div><div class="scoring-value">' + (sc.fasting_per_day || 15) + ' pts per fast</div></div>' +
+                '<div class="scoring-item"><div class="scoring-emoji">📿</div><div class="scoring-label">Azkar</div><div class="scoring-value">' + (sc.azkar_per_session || 3) + ' pts per session</div></div>' +
+                '<div class="scoring-item"><div class="scoring-emoji">📝</div><div class="scoring-label">Surah</div><div class="scoring-value">' + (sc.surah_per_ayah || 0.5) + ' pts per ayah</div></div>' +
+                '<div class="scoring-item"><div class="scoring-emoji">🕌</div><div class="scoring-label">Namaz</div><div class="scoring-value">See breakdown below ↓</div></div>';
+        }
+
+        // Update namaz table dynamically
+        var tblBody = document.querySelector('#scoringExplainerCard .scoring-table tbody');
+        if (tblBody) {
+            tblBody.innerHTML =
+                '<tr><td>👨 Men</td><td style="color:var(--gold)">' + (sc.namaz_mosque || 4) + ' pts ✓</td><td>' + (sc.namaz_home_men || 2) + ' pts</td><td style="color:var(--text-secondary)">0</td></tr>' +
+                '<tr><td>👩 Women</td><td style="color:var(--gold)">' + (sc.namaz_mosque || 4) + ' pts ✓</td><td style="color:var(--gold)">' + (sc.namaz_home_women || 4) + ' pts ⭐</td><td style="color:var(--text-secondary)">0</td></tr>';
+        }
+
+        // Update multipliers section
+        var mults = document.querySelector('#scoringExplainerCard .scoring-multipliers');
+        if (mults) {
+            mults.innerHTML =
+                '<h3 style="font-size:14px;color:var(--gold);margin:16px 0 8px">⚡ Multipliers & Bonuses</h3>' +
+                '<div class="scoring-note">🔥 <strong>Streak bonus:</strong> ' + (sc.streak_per_day || 2) + ' pts per consecutive day of taraweeh.</div>' +
+                '<div class="scoring-note">👶👴 <strong>Age bonus:</strong> Children (≤12) and elders (≥60) receive +50 bonus points as encouragement.</div>' +
+                '<div class="scoring-note">⚡ <strong>Score multiplier:</strong> Admins can apply a personal boost to any user — shown as ⚡ on the leaderboard.</div>';
+        }
+    } catch (e) { /* scoring explainer fetch failed — keep static values */ }
 }
 
 let taraweehChartInstance = null;
@@ -823,10 +871,10 @@ function _popupKeyHandler(e) {
 }
 
 function openSmartPopup(triggerEl, contentHtml, opts) {
-    // Capture trigger position BEFORE closing existing popup (closeSmartPopup removes scroll-lock causing layout shift)
+    closeSmartPopup();
+    // Capture trigger position AFTER closing — DOM is stable now
     var savedRect = triggerEl ? triggerEl.getBoundingClientRect() : null;
     var savedScrollY = window.scrollY;
-    closeSmartPopup();
     opts = opts || {};
     var isMobile = window.innerWidth < 768;
 
@@ -990,7 +1038,7 @@ function renderAzkarCalendar() {
         if (hasMorning) icons += '☀️';
         if (hasEvening) icons += '🌙';
 
-        var oc = isFuture ? '' : ' onclick="openAzkarModal(this, \'' + ds + '\')"';
+        var oc = isFuture ? '' : ' onclick="event.preventDefault();event.stopPropagation();openAzkarModal(this, \'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span><span class="rakaat-badge">' + icons + '</span></div>';
     }
     container.innerHTML = html;
@@ -1183,7 +1231,7 @@ function renderNamazGrid() {
         if (loggedCount === 5) classes += ' completed';
 
         var badge = loggedCount > 0 ? ('<span class="rakaat-badge">' + loggedCount + '/5</span>') : '';
-        var oc = isFuture ? '' : ' onclick="openNamazModal(this, \'' + ds + '\')"';
+        var oc = isFuture ? '' : ' onclick="event.preventDefault();event.stopPropagation();openNamazModal(this, \'' + ds + '\')"';
         html += '<div class="' + classes + '"' + oc + '><span>' + d + '</span>' + badge + '</div>';
     }
     html += '</div>';
