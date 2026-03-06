@@ -264,6 +264,72 @@ try {
 } catch (e) { /* trigger may already exist */ }
 
 // ===================================================================
+// EVENTS TABLES
+// ===================================================================
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    mandatory INTEGER DEFAULT 0,
+    target TEXT DEFAULT 'all',
+    target_users TEXT,
+    open_at TEXT,
+    close_at TEXT,
+    results_published INTEGER DEFAULT 0,
+    created_by TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS event_questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER REFERENCES events(id),
+    question_order INTEGER DEFAULT 0,
+    type TEXT NOT NULL,
+    question_text TEXT NOT NULL,
+    options TEXT,
+    correct_answer TEXT,
+    points INTEGER DEFAULT 10,
+    negative_points INTEGER DEFAULT 0,
+    allow_manual_score INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS event_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER REFERENCES events(id),
+    username TEXT NOT NULL,
+    submitted_at TEXT DEFAULT (datetime('now')),
+    completed INTEGER DEFAULT 0,
+    total_score INTEGER DEFAULT 0,
+    UNIQUE(event_id, username)
+  );
+
+  CREATE TABLE IF NOT EXISTS event_answers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER REFERENCES event_submissions(id),
+    question_id INTEGER REFERENCES event_questions(id),
+    answer_text TEXT,
+    auto_score INTEGER,
+    manual_score INTEGER,
+    admin_note TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS event_points (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER REFERENCES events(id),
+    username TEXT NOT NULL,
+    points INTEGER DEFAULT 0,
+    awarded_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(event_id, username)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_event_submissions_event ON event_submissions(event_id, username);
+  CREATE INDEX IF NOT EXISTS idx_event_answers_submission ON event_answers(submission_id);
+  CREATE INDEX IF NOT EXISTS idx_event_points_user ON event_points(username);
+`);
+
+// ===================================================================
 // SCORING CONFIG TABLE
 // ===================================================================
 

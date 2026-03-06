@@ -135,6 +135,9 @@
                 <button class="sidebar-nav-item" data-tab="stats" onclick="switchTab('stats')">
                     <span class="nav-icon">📊</span> Stats
                 </button>
+                <button class="sidebar-nav-item" data-tab="events" onclick="switchTab('events')">
+                    <span class="nav-icon">🎯</span> Events
+                </button>
                 <button class="sidebar-nav-item" data-tab="admin" id="sidebarAdminBtn" style="display:none"
                     onclick="switchTab('admin')">
                     <span class="nav-icon">👑</span> Admin
@@ -401,7 +404,15 @@
                             style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;">
                             <h3 style="font-size:14px; margin-bottom: 12px; text-align:center;">Family Score Comparison
                             </h3>
-                            <canvas id="scoreChart" height="200"></canvas>
+                            <div id="scoreChartContainer"><canvas id="scoreChart" height="200"></canvas></div>
+                            <div id="scoreChartNote" style="display:none;text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px;">Includes tracker scores + event points</div>
+                        </div>
+                        <div id="eventChartWrapper" style="display:none">
+                            <div
+                                style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;">
+                                <h3 style="font-size:14px; margin-bottom: 12px; text-align:center;">🎯 Event Points</h3>
+                                <div id="eventChartContainer"><canvas id="eventChart" height="200"></canvas></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -496,6 +507,27 @@
                         <div class="scoring-note">
                             ⚡ <strong>Score multiplier:</strong> Admins can apply a personal boost to any user — shown
                             as ⚡ on the leaderboard.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: EVENTS -->
+            <div class="tab-content" id="tab-events">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🎯 Events</h2>
+                    </div>
+                    <div id="eventsUserView"></div>
+                </div>
+                <div id="eventsAdminSection" style="display:none">
+                    <div class="card">
+                        <div class="card-header" style="cursor:pointer" onclick="toggleEventsAdmin()">
+                            <h2>👑 Event Management <span id="eventsAdminToggle" style="font-size:14px">▼</span></h2>
+                        </div>
+                        <div id="eventsAdminBody">
+                            <button class="btn btn-primary" onclick="openCreateEvent()" style="margin-bottom:16px">➕ Create Event</button>
+                            <div id="eventsAdminList"></div>
                         </div>
                     </div>
                 </div>
@@ -813,6 +845,10 @@
                     <span class="nav-icon">📊</span>
                     <span>Stats</span>
                 </button>
+                <button class="bottom-nav-item" data-tab="events" onclick="switchTab('events')">
+                    <span class="nav-icon">🎯</span>
+                    <span>Events</span>
+                </button>
                 <button class="bottom-nav-item" data-tab="admin" id="bottomNavAdminBtn" style="display:none"
                     onclick="switchTab('admin')">
                     <span class="nav-icon">👑</span>
@@ -820,7 +856,7 @@
                 </button>
             </nav>
 
-            <div class="version-tag">v3.1.2</div>
+            <div class="version-tag">v3.2.0</div>
 
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <script src="/app.js"></script>

@@ -97,6 +97,7 @@ app.use('/api/fasting', authMiddleware, frozenCheck, require('./routes/fasting')
 app.use('/api/azkar', authMiddleware, frozenCheck, require('./routes/azkar'));
 app.use('/api/surah', authMiddleware, frozenCheck, require('./routes/surah'));
 app.use('/api/namaz', authMiddleware, frozenCheck, require('./routes/namaz'));
+app.use('/api/events', authMiddleware, frozenCheck, require('./routes/events'));
 app.use('/api/dashboard', authMiddleware, require('./routes/dashboard'));
 app.use('/api/ramadan', authMiddleware, require('./routes/ramadan'));
 
@@ -163,7 +164,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     server = https.createServer(options, app);
     console.log('');
     console.log('  🔒 SSL Certificates found in /ssl');
-    console.log('  🕌 RamadanFlow v3.1.2 is running in HTTPS mode!');
+    console.log('  🕌 RamadanFlow v3.2.0 is running in HTTPS mode!');
     console.log('  ─────────────────────────────────');
     console.log(`  URL:  https://localhost:${PORT}`);
     console.log('');
@@ -171,7 +172,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     server = http.createServer(app);
     console.log('');
     console.log('  ⚠️  No SSL certs in /ssl. Starting HTTP mode.');
-    console.log('  🕌 RamadanFlow v3.1.2 is running!');
+    console.log('  🕌 RamadanFlow v3.2.0 is running!');
     console.log('  ─────────────────────────────────');
     console.log(`  URL:  http://localhost:${PORT}`);
     console.log('');

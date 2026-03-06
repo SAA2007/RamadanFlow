@@ -1,6 +1,6 @@
 {
   "name": "ramadanflow",
-  "version": "3.1.2",
+  "version": "3.2.0",
   "description": "Family Ramadan progress tracker — self-hosted on Raspberry Pi",
   "main": "server.js",
   "scripts": {

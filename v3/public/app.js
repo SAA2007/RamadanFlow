@@ -292,6 +292,7 @@ function switchTab(tab) {
     else if (tab === 'surah') loadSurah();
     else if (tab === 'namaz') loadNamaz();
     else if (tab === 'stats') loadStats();
+    else if (tab === 'events') loadEvents();
     else if (tab === 'admin') loadAdmin();
 }
 
@@ -726,6 +727,7 @@ async function loadScoringExplainer() {
 
 let taraweehChartInstance = null;
 let scoreChartInstance = null;
+let eventChartInstance = null;
 
 const BADGE_DEFS = [
     { emoji: '🔥', name: 'First Streak', desc: '3+ day streak', check: function (s) { return s.streak >= 3; } },
@@ -751,23 +753,50 @@ function renderCharts() {
     var labels = data.map(function (s) { return s.username; });
     var taraweehData = data.map(function (s) { return s.taraweehAverage; });
     var scoreData = data.map(function (s) { return s.score; });
+    var eventData = data.map(function (s) { return s.eventPoints || 0; });
+    var hasEventPoints = eventData.some(function (v) { return v > 0; });
 
     if (taraweehChartInstance) taraweehChartInstance.destroy();
     if (scoreChartInstance) scoreChartInstance.destroy();
+    if (eventChartInstance) eventChartInstance.destroy();
+
+    // Dynamic height: max(300, users * 40)
+    var chartHeight = Math.max(300, data.length * 40);
 
     var ctxT = document.getElementById('taraweehChart').getContext('2d');
+    document.getElementById('taraweehChart').parentElement.style.height = chartHeight + 'px';
     taraweehChartInstance = new Chart(ctxT, {
         type: 'bar',
         data: { labels: labels, datasets: [{ label: 'Avg Rakaat/Day', data: taraweehData, backgroundColor: 'rgba(46, 204, 113, 0.6)', borderColor: '#2ecc71', borderWidth: 1 }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
     });
 
     var ctxS = document.getElementById('scoreChart').getContext('2d');
+    document.getElementById('scoreChartContainer').style.height = chartHeight + 'px';
     scoreChartInstance = new Chart(ctxS, {
         type: 'bar',
         data: { labels: labels, datasets: [{ label: 'Score', data: scoreData, backgroundColor: 'rgba(201, 168, 76, 0.6)', borderColor: '#c9a84c', borderWidth: 1 }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
     });
+
+    // Show note if any event points exist
+    var noteEl = document.getElementById('scoreChartNote');
+    if (noteEl) noteEl.style.display = hasEventPoints ? 'block' : 'none';
+
+    // Event Points chart — only if published results exist
+    var eventWrapper = document.getElementById('eventChartWrapper');
+    if (hasEventPoints && eventWrapper) {
+        eventWrapper.style.display = 'block';
+        document.getElementById('eventChartContainer').style.height = chartHeight + 'px';
+        var ctxE = document.getElementById('eventChart').getContext('2d');
+        eventChartInstance = new Chart(ctxE, {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ label: 'Event Points', data: eventData, backgroundColor: 'rgba(155, 89, 182, 0.6)', borderColor: '#9b59b6', borderWidth: 1 }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+        });
+    } else if (eventWrapper) {
+        eventWrapper.style.display = 'none';
+    }
 }
 
 
@@ -1372,6 +1401,448 @@ async function saveNamazDay() {
     showToast('Namaz saved');
     loadNamaz();
     refreshDashboard();
+}
+
+// ===================================================================
+// EVENTS TAB
+// ===================================================================
+
+async function loadEvents() {
+    // Show admin section if admin
+    var adminSection = document.getElementById('eventsAdminSection');
+    if (adminSection) adminSection.style.display = APP.role === 'admin' ? 'block' : 'none';
+
+    try {
+        var res = await api('/events');
+        if (!res.success) { document.getElementById('eventsUserView').innerHTML = '<p style="color:var(--text-muted);padding:16px;">Failed to load events.</p>'; return; }
+
+        var events = res.events;
+        if (!events || events.length === 0) {
+            document.getElementById('eventsUserView').innerHTML = '<p style="color:var(--text-muted);padding:16px;text-align:center;">No events yet. Check back later!</p>';
+        } else {
+            var html = '<div style="display:grid;gap:12px;padding:8px 0">';
+            events.forEach(function (ev) {
+                var status = '';
+                var statusColor = '';
+                if (ev.results_published) {
+                    status = '✅ Results: ' + (ev.userPoints !== null ? ev.userPoints + ' pts' : 'Published');
+                    statusColor = 'var(--gold)';
+                } else if (ev.submitted) {
+                    status = '📨 Submitted — awaiting results';
+                    statusColor = '#2ecc71';
+                } else {
+                    status = '📝 Not started';
+                    statusColor = 'var(--text-muted)';
+                }
+
+                var badge = ev.mandatory ? '<span style="background:#e74c3c;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px">MANDATORY</span>' : '<span style="background:var(--bg-secondary);color:var(--text-secondary);font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px">Optional</span>';
+
+                var dates = '';
+                if (ev.open_at) dates += '<span style="font-size:11px;color:var(--text-muted)">Opens: ' + new Date(ev.open_at).toLocaleDateString() + '</span> ';
+                if (ev.close_at) dates += '<span style="font-size:11px;color:var(--text-muted)">Closes: ' + new Date(ev.close_at).toLocaleDateString() + '</span>';
+
+                var canOpen = !ev.submitted && !ev.results_published;
+                html += '<div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;' + (canOpen ? 'cursor:pointer' : '') + '" ' + (canOpen ? 'onclick="openEventQuestions(' + ev.id + ')"' : '') + '>';
+                html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+                html += '<div><strong style="font-size:16px">' + ev.title + '</strong>' + badge + '</div>';
+                html += '<div style="color:' + statusColor + ';font-size:13px;font-weight:600">' + status + '</div>';
+                html += '</div>';
+                if (ev.description) html += '<p style="margin:8px 0 4px;color:var(--text-secondary);font-size:13px">' + ev.description + '</p>';
+                if (dates) html += '<div style="margin-top:4px">' + dates + '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+            document.getElementById('eventsUserView').innerHTML = html;
+        }
+
+        if (APP.role === 'admin') loadAdminEvents();
+    } catch (e) {
+        document.getElementById('eventsUserView').innerHTML = '<p style="color:var(--text-muted);padding:16px;">Failed to load events.</p>';
+    }
+}
+
+async function openEventQuestions(eventId) {
+    try {
+        var res = await api('/events/' + eventId + '/questions');
+        if (!res.success) { showToast(res.error || 'Failed to load questions', 'error'); return; }
+
+        var ev = res.event;
+        var questions = res.questions;
+
+        var html = '<div style="padding:8px">';
+        html += '<h3 style="margin-bottom:4px">' + ev.title + '</h3>';
+        if (ev.description) html += '<p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">' + ev.description + '</p>';
+
+        questions.forEach(function (q, idx) {
+            html += '<div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">';
+            html += '<div style="font-weight:600;margin-bottom:8px">Q' + (idx + 1) + '. ' + q.question_text + '</div>';
+
+            if (q.type === 'truefalse') {
+                html += '<div style="display:flex;gap:8px">';
+                html += '<button class="btn" style="flex:1;padding:12px;font-size:16px;" onclick="this.parentElement.querySelectorAll(\'.btn\').forEach(b=>b.style.background=\'\');this.style.background=\'var(--gold)\';this.style.color=\'#000\'" data-qid="' + q.id + '" data-type="tf" data-val="True">✅ True</button>';
+                html += '<button class="btn" style="flex:1;padding:12px;font-size:16px;" onclick="this.parentElement.querySelectorAll(\'.btn\').forEach(b=>b.style.background=\'\');this.style.background=\'var(--gold)\';this.style.color=\'#000\'" data-qid="' + q.id + '" data-type="tf" data-val="False">❌ False</button>';
+                html += '</div>';
+            } else if (q.type === 'mcq' && q.options) {
+                q.options.forEach(function (opt, oi) {
+                    html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:14px">';
+                    html += '<input type="radio" name="q_' + q.id + '" value="' + opt.replace(/"/g, '&quot;') + '" style="min-width:18px;min-height:18px">';
+                    html += '<span>' + opt + '</span></label>';
+                });
+            } else if (q.type === 'written') {
+                html += '<textarea data-qid="' + q.id + '" data-type="written" style="width:100%;min-height:80px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm);padding:8px;font-family:inherit;resize:vertical" placeholder="Type your answer..."></textarea>';
+            }
+            html += '</div>';
+        });
+
+        html += '<button class="btn btn-primary" onclick="submitEventAnswers(' + eventId + ')" style="width:100%;padding:12px;font-size:16px;margin-top:8px">📨 Submit Answers</button>';
+        html += '</div>';
+
+        openSmartPopup(null, html, { title: '🎯 ' + ev.title, width: 500 });
+    } catch (e) {
+        showToast('Failed to load questions', 'error');
+    }
+}
+
+async function submitEventAnswers(eventId) {
+    if (!confirm('⚠️ You cannot change your answers after submitting. Continue?')) return;
+
+    var popup = document.querySelector('.smart-popup-content') || document.querySelector('.bottom-sheet-content') || document.body;
+    var answers = [];
+
+    // Collect T/F answers
+    popup.querySelectorAll('[data-type="tf"]').forEach(function (btn) {
+        if (btn.style.background && btn.style.background.includes('var(--gold)')) {
+            answers.push({ question_id: parseInt(btn.getAttribute('data-qid')), answer_text: btn.getAttribute('data-val') });
+        }
+    });
+
+    // Collect MCQ answers
+    popup.querySelectorAll('input[type="radio"]:checked').forEach(function (radio) {
+        var qid = parseInt(radio.name.replace('q_', ''));
+        answers.push({ question_id: qid, answer_text: radio.value });
+    });
+
+    // Collect written answers
+    popup.querySelectorAll('[data-type="written"]').forEach(function (ta) {
+        answers.push({ question_id: parseInt(ta.getAttribute('data-qid')), answer_text: ta.value });
+    });
+
+    try {
+        showLoading('Submitting...');
+        var res = await api('/events/' + eventId + '/submit', { method: 'POST', body: { answers: answers } });
+        hideLoading();
+        if (res.success) {
+            showToast(res.message || 'Answers submitted!');
+            closeSmartPopup();
+            loadEvents();
+        } else {
+            showToast(res.error || 'Submission failed', 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast('Submission failed', 'error');
+    }
+}
+
+// ===================================================================
+// EVENTS ADMIN
+// ===================================================================
+
+var eventsAdminOpen = localStorage.getItem('rf_events_admin_open') !== 'false';
+
+function toggleEventsAdmin() {
+    eventsAdminOpen = !eventsAdminOpen;
+    localStorage.setItem('rf_events_admin_open', eventsAdminOpen);
+    var body = document.getElementById('eventsAdminBody');
+    var toggle = document.getElementById('eventsAdminToggle');
+    if (body) body.style.display = eventsAdminOpen ? 'block' : 'none';
+    if (toggle) toggle.textContent = eventsAdminOpen ? '▼' : '▶';
+}
+
+function openCreateEvent() {
+    var html = '<div style="padding:8px">';
+    html += '<div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-secondary)">TITLE</label><input id="ceTitle" style="width:100%;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)" placeholder="Event title..."></div>';
+    html += '<div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-secondary)">DESCRIPTION</label><textarea id="ceDesc" style="width:100%;min-height:60px;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm);resize:vertical" placeholder="Description (optional)..."></textarea></div>';
+    html += '<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
+    html += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="ceMandatory"> Mandatory</label>';
+    html += '<div><label style="font-size:12px;color:var(--text-secondary)">OPEN AT</label><input type="datetime-local" id="ceOpenAt" style="padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)"></div>';
+    html += '<div><label style="font-size:12px;color:var(--text-secondary)">CLOSE AT</label><input type="datetime-local" id="ceCloseAt" style="padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)"></div>';
+    html += '</div>';
+
+    html += '<h4 style="margin:16px 0 8px">Questions</h4>';
+    html += '<div id="ceQuestions"></div>';
+    html += '<button class="btn btn-secondary" onclick="addQuestion()" style="margin:8px 0 16px">➕ Add Question</button>';
+
+    html += '<button class="btn btn-primary" onclick="saveCreateEvent()" style="width:100%;padding:12px;font-size:16px">💾 Save Event</button>';
+    html += '</div>';
+
+    openSmartPopup(null, html, { title: '➕ Create Event', width: 550 });
+
+    // Add first question by default
+    setTimeout(function () { addQuestion(); }, 100);
+}
+
+var questionCounter = 0;
+function addQuestion() {
+    questionCounter++;
+    var container = document.getElementById('ceQuestions');
+    if (!container) return;
+
+    var div = document.createElement('div');
+    div.id = 'ceQ' + questionCounter;
+    div.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px';
+    div.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<strong>Q' + questionCounter + '</strong>' +
+        '<button class="btn btn-secondary" style="padding:2px 8px;font-size:12px" onclick="this.closest(\'[id^=ceQ]\').remove()">✕</button>' +
+        '</div>' +
+        '<div style="margin-bottom:8px"><select data-field="type" onchange="updateQType(this)" style="padding:6px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)">' +
+        '<option value="truefalse">True/False</option><option value="mcq">Multiple Choice</option><option value="written">Written</option></select></div>' +
+        '<div style="margin-bottom:8px"><input data-field="question_text" style="width:100%;padding:6px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)" placeholder="Question text..."></div>' +
+        '<div data-field="type-specific">' +
+        '<div style="margin-bottom:4px"><label style="font-size:11px;color:var(--text-muted)">CORRECT ANSWER</label><select data-field="correct_answer" style="padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)"><option value="True">True</option><option value="False">False</option></select></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<div><label style="font-size:11px;color:var(--text-muted)">POINTS</label><input type="number" data-field="points" value="10" style="width:60px;padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)"></div>' +
+        '<div><label style="font-size:11px;color:var(--text-muted)">NEGATIVE</label><input type="number" data-field="negative_points" value="0" style="width:60px;padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)"></div>' +
+        '</div>';
+    container.appendChild(div);
+}
+
+function updateQType(sel) {
+    var qDiv = sel.closest('[id^=ceQ]');
+    var typeSpecific = qDiv.querySelector('[data-field="type-specific"]');
+    var type = sel.value;
+
+    if (type === 'truefalse') {
+        typeSpecific.innerHTML = '<div style="margin-bottom:4px"><label style="font-size:11px;color:var(--text-muted)">CORRECT ANSWER</label><select data-field="correct_answer" style="padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)"><option value="True">True</option><option value="False">False</option></select></div>';
+    } else if (type === 'mcq') {
+        typeSpecific.innerHTML =
+            '<div style="margin-bottom:4px"><label style="font-size:11px;color:var(--text-muted)">OPTIONS (one per line)</label><textarea data-field="options" style="width:100%;min-height:60px;padding:6px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm);resize:vertical" placeholder="Option A\nOption B\nOption C\nOption D"></textarea></div>' +
+            '<div style="margin-bottom:4px"><label style="font-size:11px;color:var(--text-muted)">CORRECT ANSWER (exact text)</label><input data-field="correct_answer" style="width:100%;padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)" placeholder="Exact text of correct option"></div>';
+    } else {
+        typeSpecific.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:4px">Written answers require manual scoring by admin.</div>';
+    }
+}
+
+async function saveCreateEvent() {
+    var title = document.getElementById('ceTitle').value.trim();
+    var desc = document.getElementById('ceDesc').value.trim();
+    var mandatory = document.getElementById('ceMandatory').checked;
+    var openAt = document.getElementById('ceOpenAt').value || null;
+    var closeAt = document.getElementById('ceCloseAt').value || null;
+
+    if (!title) { showToast('Title is required', 'error'); return; }
+
+    var qDivs = document.querySelectorAll('[id^=ceQ]');
+    var questions = [];
+    qDivs.forEach(function (qd, i) {
+        var type = qd.querySelector('[data-field="type"]').value;
+        var text = qd.querySelector('[data-field="question_text"]').value.trim();
+        var points = parseInt(qd.querySelector('[data-field="points"]').value) || 10;
+        var negPoints = parseInt(qd.querySelector('[data-field="negative_points"]').value) || 0;
+
+        var q = { type: type, question_text: text, question_order: i, points: points, negative_points: negPoints };
+
+        if (type === 'mcq') {
+            var optTA = qd.querySelector('[data-field="options"]');
+            if (optTA) q.options = optTA.value.split('\n').map(function (s) { return s.trim(); }).filter(function (s) { return s; });
+        }
+
+        var correctEl = qd.querySelector('[data-field="correct_answer"]');
+        if (correctEl && (type === 'truefalse' || type === 'mcq')) {
+            q.correct_answer = (correctEl.value || '').trim();
+        }
+
+        questions.push(q);
+    });
+
+    if (questions.length === 0 || !questions[0].question_text) {
+        showToast('At least one question is required', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Creating event...');
+        var res = await api('/events/admin/create', { method: 'POST', body: { title: title, description: desc, mandatory: mandatory, target: 'all', open_at: openAt, close_at: closeAt, questions: questions } });
+        hideLoading();
+        if (res.success) {
+            showToast('Event created!');
+            closeSmartPopup();
+            loadEvents();
+        } else {
+            showToast(res.error || 'Failed to create event', 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast('Failed to create event', 'error');
+    }
+}
+
+async function loadAdminEvents() {
+    try {
+        var res = await api('/events/admin/list');
+        if (!res.success) return;
+
+        var events = res.events;
+        var container = document.getElementById('eventsAdminList');
+        if (!container) return;
+
+        if (!events || events.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-muted)">No events created yet.</p>';
+            return;
+        }
+
+        var html = '';
+        events.forEach(function (ev) {
+            var pubBadge = ev.results_published ? '<span style="color:#2ecc71;font-size:12px"> ✅ Published</span>' : '<span style="color:var(--text-muted);font-size:12px"> ⏳ Unpublished</span>';
+            html += '<div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">';
+            html += '<div><strong>' + ev.title + '</strong>' + pubBadge + '</div>';
+            html += '<div style="font-size:12px;color:var(--text-muted)">' + ev.question_count + ' questions · ' + ev.submission_count + ' submissions</div>';
+            html += '</div>';
+            html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
+            html += '<button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onclick="viewSubmissions(' + ev.id + ')">📋 Submissions</button>';
+            if (!ev.results_published) html += '<button class="btn btn-primary" style="font-size:11px;padding:4px 8px" onclick="publishEvent(' + ev.id + ')">🎉 Publish Results</button>';
+            html += '<button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onclick="resetEventAll(' + ev.id + ')">🔄 Reset All</button>';
+            html += '</div>';
+            html += '</div>';
+        });
+        container.innerHTML = html;
+    } catch (e) { /* silent */ }
+}
+
+async function viewSubmissions(eventId) {
+    try {
+        showLoading('Loading submissions...');
+        var res = await api('/events/admin/' + eventId + '/submissions');
+        hideLoading();
+        if (!res.success) { showToast('Failed to load submissions', 'error'); return; }
+
+        var subs = res.submissions;
+        var html = '<div style="padding:8px;max-height:70vh;overflow-y:auto">';
+
+        if (!subs || subs.length === 0) {
+            html += '<p style="color:var(--text-muted)">No submissions yet.</p>';
+        } else {
+            subs.forEach(function (sub) {
+                html += '<div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">';
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+                html += '<strong>' + sub.username + '</strong>';
+                html += '<span style="color:var(--gold);font-weight:700">Total: ' + sub.total_score + '</span>';
+                html += '</div>';
+
+                sub.answers.forEach(function (a) {
+                    var scoreDisplay = '';
+                    if (a.manual_score !== null) scoreDisplay = '<span style="color:var(--gold)">' + a.manual_score + ' pts (manual)</span>';
+                    else if (a.auto_score !== null) scoreDisplay = '<span style="color:#2ecc71">' + a.auto_score + ' pts (auto)</span>';
+                    else scoreDisplay = '<span style="color:var(--text-muted)">Unscored</span>';
+
+                    html += '<div style="padding:6px 0;border-bottom:1px solid var(--border-color);font-size:13px">';
+                    html += '<div style="color:var(--text-secondary);margin-bottom:2px">' + a.question_text + '</div>';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">';
+                    html += '<span>Answer: <strong>' + (a.answer_text || '—') + '</strong></span>';
+                    html += scoreDisplay;
+                    html += '</div>';
+
+                    // Manual score input for written or override
+                    if (a.type === 'written' || a.auto_score === null) {
+                        html += '<div style="display:flex;gap:6px;align-items:center;margin-top:4px">';
+                        html += '<input type="number" id="mscore_' + sub.id + '_' + a.question_id + '" value="' + (a.manual_score !== null ? a.manual_score : '') + '" style="width:60px;padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)" placeholder="Score">';
+                        html += '<button class="btn btn-secondary" style="font-size:11px;padding:2px 8px" onclick="saveManualScore(' + eventId + ',' + sub.id + ',' + a.question_id + ')">Save</button>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                });
+
+                html += '<div style="display:flex;gap:6px;margin-top:8px">';
+                html += '<button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onclick="resetEventUser(' + eventId + ',\'' + sub.username + '\')">🔄 Reset User</button>';
+                html += '</div>';
+                html += '</div>';
+            });
+        }
+        html += '</div>';
+
+        openSmartPopup(null, html, { title: '📋 Submissions (Event #' + eventId + ')', width: 550 });
+    } catch (e) {
+        hideLoading();
+        showToast('Failed to load submissions', 'error');
+    }
+}
+
+async function saveManualScore(eventId, subId, qId) {
+    var input = document.getElementById('mscore_' + subId + '_' + qId);
+    if (!input) return;
+    var score = parseInt(input.value);
+    if (isNaN(score)) { showToast('Enter a valid score', 'error'); return; }
+
+    try {
+        var res = await api('/events/admin/' + eventId + '/submissions/' + subId + '/score', { method: 'POST', body: { question_id: qId, manual_score: score } });
+        if (res.success) {
+            showToast('Score saved (total: ' + res.total_score + ')');
+        } else {
+            showToast(res.error || 'Failed to save score', 'error');
+        }
+    } catch (e) {
+        showToast('Failed to save score', 'error');
+    }
+}
+
+async function publishEvent(eventId) {
+    if (!confirm('Publish results for this event? This will award points to all users.')) return;
+
+    try {
+        showLoading('Publishing...');
+        var res = await api('/events/admin/' + eventId + '/publish', { method: 'POST' });
+        hideLoading();
+        if (res.success) {
+            showToast(res.message || 'Results published!');
+            loadEvents();
+            refreshDashboard();
+        } else {
+            showToast(res.error || 'Failed to publish', 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast('Failed to publish', 'error');
+    }
+}
+
+async function resetEventUser(eventId, username) {
+    if (!confirm('Reset submission for ' + username + '? They can re-submit.')) return;
+
+    try {
+        var res = await api('/events/admin/' + eventId + '/reset-user', { method: 'POST', body: { username: username } });
+        if (res.success) {
+            showToast(res.message || 'Submission reset');
+            closeSmartPopup();
+            loadEvents();
+        } else {
+            showToast(res.error || 'Failed to reset', 'error');
+        }
+    } catch (e) {
+        showToast('Failed to reset', 'error');
+    }
+}
+
+async function resetEventAll(eventId) {
+    if (!confirm('⚠️ Reset ALL submissions for this event? This cannot be undone.')) return;
+    if (!confirm('Are you absolutely sure?')) return;
+
+    try {
+        showLoading('Resetting...');
+        var res = await api('/events/admin/' + eventId + '/reset-all', { method: 'POST' });
+        hideLoading();
+        if (res.success) {
+            showToast(res.message || 'All submissions reset');
+            loadEvents();
+        } else {
+            showToast(res.error || 'Failed to reset', 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast('Failed to reset', 'error');
+    }
 }
 
 // ===================================================================

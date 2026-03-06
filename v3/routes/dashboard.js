@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/:year', (req, res) => {
     try {
         const year = parseInt(req.params.year);
-        const users = db.prepare('SELECT username, email, role, gender, age, score_multiplier, frozen, created_at FROM users').all();
+        const users = db.prepare('SELECT username, email, role, gender, age, dob, score_multiplier, frozen, created_at FROM users').all();
 
         const summaries = users.map(u => {
             // Taraweeh count, rakaat, & streak
@@ -61,6 +61,12 @@ router.get('/:year', (req, res) => {
             const surahResult = db.prepare("SELECT COALESCE(SUM(memorized_ayah), 0) as total FROM surah_memorization WHERE username = ?").get(u.username);
             const surahAyahs = surahResult.total;
 
+            // Event points from published events
+            const eventPointsResult = db.prepare(
+                'SELECT COALESCE(SUM(points),0) as total FROM event_points WHERE username = ? AND event_id IN (SELECT id FROM events WHERE results_published = 1)'
+            ).get(u.username);
+            const eventPoints = eventPointsResult.total;
+
             // Read scoring config from DB
             const configRows = db.prepare('SELECT key, value FROM scoring_config').all();
             const cfg = {};
@@ -88,7 +94,8 @@ router.get('/:year', (req, res) => {
                 (namazMosque * nMosqueMult) +
                 (namazHome * nHomeMult) +
                 (streak * (cfg.streak_per_day || 2)) +
-                ageBonus
+                ageBonus +
+                eventPoints
             );
 
             // Apply per-user score multiplier
@@ -112,6 +119,7 @@ router.get('/:year', (req, res) => {
                 fastingCount,
                 azkarCount,
                 namazCount,
+                eventPoints,
                 score
             };
         });
