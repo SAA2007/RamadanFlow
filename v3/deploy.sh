@@ -1,6 +1,6 @@
 #!/bin/bash
 # ===================================================================
-# RamadanFlow v3.2.0 — Automated Deployment Script
+# RamadanFlow v3.2.1 — Automated Deployment Script
 # Targets: Raspberry Pi / CasaOS / Any Debian-based Linux
 # Usage:   chmod +x deploy.sh && ./deploy.sh
 #          chmod +x deploy.sh && ./deploy.sh --fresh   (wipes DB)

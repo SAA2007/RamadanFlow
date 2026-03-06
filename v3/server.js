@@ -164,7 +164,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     server = https.createServer(options, app);
     console.log('');
     console.log('  🔒 SSL Certificates found in /ssl');
-    console.log('  🕌 RamadanFlow v3.2.0 is running in HTTPS mode!');
+    console.log('  🕌 RamadanFlow v3.2.1 is running in HTTPS mode!');
     console.log('  ─────────────────────────────────');
     console.log(`  URL:  https://localhost:${PORT}`);
     console.log('');
@@ -172,7 +172,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     server = http.createServer(app);
     console.log('');
     console.log('  ⚠️  No SSL certs in /ssl. Starting HTTP mode.');
-    console.log('  🕌 RamadanFlow v3.2.0 is running!');
+    console.log('  🕌 RamadanFlow v3.2.1 is running!');
     console.log('  ─────────────────────────────────');
     console.log(`  URL:  http://localhost:${PORT}`);
     console.log('');

@@ -1469,7 +1469,15 @@ async function openEventQuestions(eventId) {
         var ev = res.event;
         var questions = res.questions;
 
-        var html = '<div style="padding:8px">';
+        // Deduplicate by question id (safety net)
+        var seen = {};
+        questions = questions.filter(function (q) {
+            if (seen[q.id]) return false;
+            seen[q.id] = true;
+            return true;
+        });
+
+        var html = '<div class="smart-popup-content" style="padding:8px">';
         html += '<h3 style="margin-bottom:4px">' + ev.title + '</h3>';
         if (ev.description) html += '<p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">' + ev.description + '</p>';
 
@@ -1590,11 +1598,12 @@ function addQuestion() {
 
     var div = document.createElement('div');
     div.id = 'ceQ' + questionCounter;
+    div.setAttribute('data-qbox', 'true');
     div.style.cssText = 'background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px';
     div.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-        '<strong>Q' + questionCounter + '</strong>' +
-        '<button class="btn btn-secondary" style="padding:2px 8px;font-size:12px" onclick="this.closest(\'[id^=ceQ]\').remove()">✕</button>' +
+        '<strong class="q-label">Q' + questionCounter + '</strong>' +
+        '<button class="btn btn-secondary" style="padding:2px 8px;font-size:12px" onclick="this.closest(\'[data-qbox]\').remove();reindexQuestions()">✕</button>' +
         '</div>' +
         '<div style="margin-bottom:8px"><select data-field="type" onchange="updateQType(this)" style="padding:6px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)">' +
         '<option value="truefalse">True/False</option><option value="mcq">Multiple Choice</option><option value="written">Written</option></select></div>' +
@@ -1607,6 +1616,15 @@ function addQuestion() {
         '<div><label style="font-size:11px;color:var(--text-muted)">NEGATIVE</label><input type="number" data-field="negative_points" value="0" style="width:60px;padding:4px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm)"></div>' +
         '</div>';
     container.appendChild(div);
+    reindexQuestions();
+}
+
+function reindexQuestions() {
+    var boxes = document.querySelectorAll('[data-qbox]');
+    boxes.forEach(function (box, i) {
+        var label = box.querySelector('.q-label');
+        if (label) label.textContent = 'Q' + (i + 1);
+    });
 }
 
 function updateQType(sel) {
@@ -1634,7 +1652,7 @@ async function saveCreateEvent() {
 
     if (!title) { showToast('Title is required', 'error'); return; }
 
-    var qDivs = document.querySelectorAll('[id^=ceQ]');
+    var qDivs = document.querySelectorAll('[data-qbox]');
     var questions = [];
     qDivs.forEach(function (qd, i) {
         var type = qd.querySelector('[data-field="type"]').value;
@@ -1705,6 +1723,7 @@ async function loadAdminEvents() {
             html += '<button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onclick="viewSubmissions(' + ev.id + ')">📋 Submissions</button>';
             if (!ev.results_published) html += '<button class="btn btn-primary" style="font-size:11px;padding:4px 8px" onclick="publishEvent(' + ev.id + ')">🎉 Publish Results</button>';
             html += '<button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onclick="resetEventAll(' + ev.id + ')">🔄 Reset All</button>';
+            html += '<button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;color:#e74c3c" onclick="deleteEvent(' + ev.id + ')">🗑️ Delete</button>';
             html += '</div>';
             html += '</div>';
         });
@@ -1842,6 +1861,26 @@ async function resetEventAll(eventId) {
     } catch (e) {
         hideLoading();
         showToast('Failed to reset', 'error');
+    }
+}
+
+async function deleteEvent(eventId) {
+    if (!confirm('Delete event and all submissions? This cannot be undone.')) return;
+
+    try {
+        showLoading('Deleting...');
+        var res = await api('/events/admin/' + eventId, { method: 'DELETE' });
+        hideLoading();
+        if (res.success) {
+            showToast(res.message || 'Event deleted');
+            loadEvents();
+            refreshDashboard();
+        } else {
+            showToast(res.error || 'Failed to delete', 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast('Failed to delete', 'error');
     }
 }
 

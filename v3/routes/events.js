@@ -92,6 +92,11 @@ router.post('/:id/submit', (req, res) => {
         const ev = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
         if (!ev) return res.json({ success: false, error: 'Event not found.' });
 
+        // Check if not yet open
+        if (ev.open_at && new Date(ev.open_at) > new Date()) {
+            return res.json({ success: false, error: 'This event has not opened yet.' });
+        }
+
         // Check if closed
         if (ev.close_at && new Date(ev.close_at) < new Date()) {
             return res.json({ success: false, error: 'This event has closed.' });
@@ -379,6 +384,44 @@ router.post('/admin/:id/reset-all', adminMiddleware, (req, res) => {
     } catch (err) {
         console.error('Reset all error:', err);
         res.json({ success: false, error: 'Failed to reset submissions.' });
+    }
+});
+
+// DELETE /api/events/admin/:id — delete event and all associated data
+router.delete('/admin/:id', adminMiddleware, (req, res) => {
+    try {
+        const eventId = parseInt(req.params.id);
+
+        const ev = db.prepare('SELECT id, title FROM events WHERE id = ?').get(eventId);
+        if (!ev) return res.json({ success: false, error: 'Event not found.' });
+
+        const deleteTx = db.transaction(() => {
+            // Delete answers for all submissions of this event
+            const subs = db.prepare('SELECT id FROM event_submissions WHERE event_id = ?').all(eventId);
+            subs.forEach(s => {
+                db.prepare('DELETE FROM event_answers WHERE submission_id = ?').run(s.id);
+            });
+            // Delete submissions
+            db.prepare('DELETE FROM event_submissions WHERE event_id = ?').run(eventId);
+            // Delete questions
+            db.prepare('DELETE FROM event_questions WHERE event_id = ?').run(eventId);
+            // Delete points
+            db.prepare('DELETE FROM event_points WHERE event_id = ?').run(eventId);
+            // Delete event
+            db.prepare('DELETE FROM events WHERE id = ?').run(eventId);
+        });
+        deleteTx();
+
+        // Audit
+        try {
+            db.prepare('INSERT INTO analytics_admin_audit (admin_username, action, target_username, details) VALUES (?, ?, ?, ?)')
+                .run(req.user.username, 'delete_event', null, JSON.stringify({ event_id: eventId, title: ev.title }));
+        } catch (e) { /* audit optional */ }
+
+        res.json({ success: true, message: 'Event "' + ev.title + '" deleted.' });
+    } catch (err) {
+        console.error('Delete event error:', err);
+        res.json({ success: false, error: 'Failed to delete event.' });
     }
 });
 

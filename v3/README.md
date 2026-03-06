@@ -1,4 +1,4 @@
-# 🕌 RamadanFlow v3.2.0
+# 🕌 RamadanFlow v3.2.1
 
 Family Ramadan progress tracker — self-hosted on Raspberry Pi. Track Taraweeh, Quran, Fasting, Azkar, Surah memorization, and daily Namaz for your entire family.
 
